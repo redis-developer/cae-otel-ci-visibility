@@ -1,0 +1,86 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test-typescript:
+    name: TypeScript Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        id: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install Dependencies
+        id: npm-ci
+        run: npm ci
+
+      - name: Check Format
+        id: npm-format-check
+        run: npm run format:check
+
+      - name: Lint
+        id: npm-lint
+        run: npm run lint
+
+      - name: Test
+        id: npm-ci-test
+        run: npm run ci-test
+
+  test-action:
+    name: GitHub Actions Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: Create Test JUnit XML
+        id: create-junit
+        run: |
+          mkdir -p test-results
+          cat > test-results/test-results.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuites name="CI Test Suite" tests="3" failures="1" errors="0" skipped="0" time="5.123">
+            <testsuite name="ExampleTests" tests="3" failures="1" errors="0" skipped="0" time="5.123">
+              <testcase name="test_success" classname="ExampleTests" time="1.234"/>
+              <testcase name="test_failure" classname="ExampleTests" time="2.345">
+                <failure message="Assertion failed">Test failed as expected</failure>
+              </testcase>
+              <testcase name="test_another_success" classname="ExampleTests" time="1.544"/>
+            </testsuite>
+          </testsuites>
+          EOF
+
+      - name: Test Local Action
+        id: test-action
+        uses: ./
+        with:
+          junit-xml-folder: 'test-results'
+          service-name: 'ci-test-service'
+          service-namespace: 'github-actions'
+          deployment-environment: 'ci'
+          otlp-endpoint: 'http://localhost:4318/v1/metrics'
+          otlp-headers: 'x-test-header=ci-test'
+
+      - name: Verify Test Results
+        id: verify
+        run: echo "Action completed successfully"
