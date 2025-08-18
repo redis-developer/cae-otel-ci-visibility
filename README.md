@@ -7,16 +7,18 @@ Extracts test metrics from JUnit XML files and ships them to OTLP endpoints.
 - Reads JUnit XML files from a directory
 - Parses test results (passed/failed/skipped/errors)
 - Generates OpenTelemetry metrics with proper semantic conventions
-- Ships metrics to OTLP-compatible backends
+- Ships metrics to OTLP-compatible backends. HTTP only for now, gRPC support
+  coming soon.
 
 ## Usage
 
 ```yaml
-- uses: your-org/otel-ci-visibility@v1
+- uses: redis-developer/cae-otel-ci-visibility@v1
   with:
     junit-xml-folder: './test-results'
     service-name: 'my-service'
     service-namespace: 'my-team'
+    service-version: 'v1.2.3'
     deployment-environment: 'ci'
     otlp-endpoint: 'https://otlp.example.com/v1/metrics'
     otlp-headers: 'authorization=Bearer ${{ secrets.OTLP_TOKEN }}'
@@ -24,16 +26,15 @@ Extracts test metrics from JUnit XML files and ships them to OTLP endpoints.
 
 ## Inputs
 
-| Input                    | Required | Default         | Description                                  |
-| ------------------------ | -------- | --------------- | -------------------------------------------- |
-| `junit-xml-folder`       | yes      | -               | Path to directory containing JUnit XML files |
-| `service-name`           | yes      | -               | OpenTelemetry service name                   |
-| `service-namespace`      | yes      | -               | OpenTelemetry service namespace              |
-| `deployment-environment` | yes      | `staging`       | Deployment environment                       |
-| `otlp-endpoint`          | yes      | -               | OTLP metrics endpoint URL                    |
-| `service-version`        | no       | git SHA         | Service version                              |
-| `otlp-headers`           | no       | -               | OTLP headers (key=value,key2=value2 or JSON) |
-| `otlp-protocol`          | no       | `http/protobuf` | OTLP protocol                                |
+| Input                    | Required | Default   | Description                                  |
+| ------------------------ | -------- | --------- | -------------------------------------------- |
+| `junit-xml-folder`       | yes      | -         | Path to directory containing JUnit XML files |
+| `service-name`           | yes      | -         | OpenTelemetry service name                   |
+| `service-namespace`      | yes      | -         | OpenTelemetry service namespace              |
+| `deployment-environment` | yes      | `staging` | Deployment environment                       |
+| `otlp-endpoint`          | yes      | -         | OTLP metrics endpoint URL                    |
+| `service-version`        | no       | git SHA   | Service version                              |
+| `otlp-headers`           | no       | -         | OTLP headers (key=value,key2=value2 or JSON) |
 
 ## Metrics
 
@@ -50,7 +51,7 @@ All metrics include proper OpenTelemetry semantic conventions and CI context.
 
 ## Requirements
 
-- JUnit XML files in standard format
+- JUnit XML files
 - OTLP-compatible metrics backend
 - Node.js 24+ runtime
 
