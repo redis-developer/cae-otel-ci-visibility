@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="32" failures="0" errors="0" time="0.542">
+  <testsuite name="src/metrics-submitter.test.ts" errors="0" failures="0" skipped="0" timestamp="2025-08-14T12:38:46" time="0.265" tests="7">
+    <testcase classname="MetricsSubmitter" name="should creates instruments for each metric type" time="0.032">
+    </testcase>
+    <testcase classname="MetricsSubmitter" name="should configures histogram with explicit buckets" time="0.024">
+    </testcase>
+    <testcase classname="MetricsSubmitter" name="should reuses existing instruments for same metric name" time="0.024">
+    </testcase>
+    <testcase classname="MetricsSubmitter" name="should handles multiple metric types in one submission" time="0.024">
+    </testcase>
+    <testcase classname="MetricsSubmitter" name="should handles metrics with different attributes correctly" time="0.024">
+    </testcase>
+    <testcase classname="MetricsSubmitter" name="should handles updowncounter negative values correctly" time="0.025">
+    </testcase>
+    <testcase classname="MetricsSubmitter" name="should handle empty metrics array gracefully" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="src/junit-parser.test.ts" errors="0" failures="0" skipped="0" timestamp="2025-08-14T12:38:46" time="0.061" tests="17">
+    <testcase classname="JUnit XML Parser" name="should parse complete junit xml" time="0.007">
+    </testcase>
+    <testcase classname="JUnit XML Parser" name="should reject XML with DOCTYPE declarations (XXE protection)" time="0">
+    </testcase>
+    <testcase classname="JUnit XML Parser" name="should reject oversized XML content" time="0">
+    </testcase>
+    <testcase classname="JUnit XML Parser" name="should reject non-string input" time="0">
+    </testcase>
+    <testcase classname="JUnit XML Parser" name="should sanitize property names to prevent prototype pollution" time="0">
+    </testcase>
+    <testcase classname="JUnit XML Parser" name="should truncate very long strings" time="0">
+    </testcase>
+    <testcase classname="JUnit XML Parser" name="should limit maximum number of properties" time="0.005">
+    </testcase>
+    <testcase classname="JUnit XML Parser" name="should handle deeply nested testsuites with depth limit" time="0">
+    </testcase>
+    <testcase classname="JUnit XML Parser" name="should safely parse numeric values" time="0.001">
+    </testcase>
+    <testcase classname="JUnit XML File System Ingestion" name="should ingest single XML file using ingestFile" time="0.001">
+    </testcase>
+    <testcase classname="JUnit XML File System Ingestion" name="should handle file not found error" time="0">
+    </testcase>
+    <testcase classname="JUnit XML File System Ingestion" name="should ingest directory with XML files using ingestDir" time="0.002">
+    </testcase>
+    <testcase classname="JUnit XML File System Ingestion" name="should handle empty directory" time="0.001">
+    </testcase>
+    <testcase classname="JUnit XML File System Ingestion" name="should handle directory not found error" time="0">
+    </testcase>
+    <testcase classname="JUnit XML File System Ingestion" name="should handle path that is not a directory" time="0">
+    </testcase>
+    <testcase classname="JUnit XML File System Ingestion" name="should handle multi-root XML documents" time="0.001">
+    </testcase>
+    <testcase classname="JUnit XML File System Ingestion" name="should combine totals correctly across multiple files" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="src/main.test.ts" errors="0" failures="0" skipped="0" timestamp="2025-08-14T12:38:46" time="0.05" tests="1">
+    <testcase classname="main.ts" name="processes JUnit XML and generates correct outputs" time="0.008">
+    </testcase>
+  </testsuite>
+  <testsuite name="src/metrics-generator.test.ts" errors="0" failures="0" skipped="0" timestamp="2025-08-14T12:38:46" time="0.036" tests="7">
+    <testcase classname="generateMetrics" name="generates correct metrics structure for simple passed test" time="0.002">
+    </testcase>
+    <testcase classname="generateMetrics" name="generates histogram buckets for duration metrics" time="0.001">
+    </testcase>
+    <testcase classname="generateMetrics" name="generates metrics for all test statuses" time="0">
+    </testcase>
+    <testcase classname="generateMetrics" name="handles nested suites recursively" time="0">
+    </testcase>
+    <testcase classname="generateMetrics" name="uses OpenTelemetry semantic conventions for attribute names" time="0.001">
+    </testcase>
+    <testcase classname="generateMetrics" name="handles minimal config with only required fields" time="0">
+    </testcase>
+    <testcase classname="generateMetrics" name="preserves duration values in seconds" time="0">
+    </testcase>
+  </testsuite>
+</testsuites>

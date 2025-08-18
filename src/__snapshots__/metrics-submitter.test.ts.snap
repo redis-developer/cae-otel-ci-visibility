@@ -1,0 +1,522 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`MetricsSubmitter should configures histogram with explicit buckets 1`] = `
+[
+  {
+    "resource": ResourceImpl {
+      "_asyncAttributesPending": false,
+      "_memoizedAttributes": undefined,
+      "_rawAttributes": [
+        [
+          "service.name",
+          "test-service",
+        ],
+        [
+          "service.version",
+          "1.0.0",
+        ],
+      ],
+    },
+    "scopeMetrics": [
+      {
+        "metrics": [
+          {
+            "aggregationTemporality": 1,
+            "dataPointType": 0,
+            "dataPoints": [
+              {
+                "attributes": {
+                  "test.name": "example",
+                },
+                "value": {
+                  "buckets": {
+                    "boundaries": [
+                      0.1,
+                      0.5,
+                      1,
+                      5,
+                      10,
+                    ],
+                    "counts": [
+                      0,
+                      0,
+                      1,
+                      0,
+                      0,
+                      0,
+                    ],
+                  },
+                  "count": 1,
+                  "max": 1,
+                  "min": 1,
+                  "sum": 1,
+                },
+              },
+            ],
+            "descriptor": {
+              "advice": {
+                "explicitBucketBoundaries": [
+                  0.1,
+                  0.5,
+                  1,
+                  5,
+                  10,
+                ],
+              },
+              "description": "Test metric",
+              "name": "test.duration",
+              "type": "HISTOGRAM",
+              "unit": "{test}",
+              "valueType": 1,
+            },
+          },
+        ],
+        "scope": {
+          "name": "test-service",
+          "schemaUrl": undefined,
+          "version": "1.0.0",
+        },
+      },
+    ],
+  },
+]
+`;
+
+exports[`MetricsSubmitter should creates instruments for each metric type 1`] = `
+[
+  {
+    "resource": ResourceImpl {
+      "_asyncAttributesPending": false,
+      "_memoizedAttributes": undefined,
+      "_rawAttributes": [
+        [
+          "service.name",
+          "test-service",
+        ],
+        [
+          "service.version",
+          "1.0.0",
+        ],
+      ],
+    },
+    "scopeMetrics": [
+      {
+        "metrics": [
+          {
+            "aggregationTemporality": 1,
+            "dataPointType": 0,
+            "dataPoints": [
+              {
+                "attributes": {
+                  "test.name": "example",
+                },
+                "value": {
+                  "buckets": {
+                    "boundaries": [
+                      0,
+                      5,
+                      10,
+                      25,
+                      50,
+                      75,
+                      100,
+                      250,
+                      500,
+                      750,
+                      1000,
+                      2500,
+                      5000,
+                      7500,
+                      10000,
+                    ],
+                    "counts": [
+                      0,
+                      1,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                    ],
+                  },
+                  "count": 1,
+                  "max": 1,
+                  "min": 1,
+                  "sum": 1,
+                },
+              },
+            ],
+            "descriptor": {
+              "advice": {},
+              "description": "Test metric",
+              "name": "test.duration",
+              "type": "HISTOGRAM",
+              "unit": "s",
+              "valueType": 1,
+            },
+          },
+          {
+            "aggregationTemporality": 1,
+            "dataPointType": 3,
+            "dataPoints": [
+              {
+                "attributes": {
+                  "test.name": "example",
+                },
+                "value": 1,
+              },
+            ],
+            "descriptor": {
+              "advice": {},
+              "description": "Test metric",
+              "name": "test.status",
+              "type": "COUNTER",
+              "unit": "{test}",
+              "valueType": 1,
+            },
+            "isMonotonic": true,
+          },
+          {
+            "aggregationTemporality": 1,
+            "dataPointType": 3,
+            "dataPoints": [
+              {
+                "attributes": {
+                  "test.name": "example",
+                },
+                "value": 1,
+              },
+            ],
+            "descriptor": {
+              "advice": {},
+              "description": "Test metric",
+              "name": "test.suite.total",
+              "type": "UP_DOWN_COUNTER",
+              "unit": "{test}",
+              "valueType": 1,
+            },
+            "isMonotonic": false,
+          },
+        ],
+        "scope": {
+          "name": "test-service",
+          "schemaUrl": undefined,
+          "version": "1.0.0",
+        },
+      },
+    ],
+  },
+]
+`;
+
+exports[`MetricsSubmitter should handles metrics with different attributes correctly 1`] = `
+[
+  {
+    "resource": ResourceImpl {
+      "_asyncAttributesPending": false,
+      "_memoizedAttributes": undefined,
+      "_rawAttributes": [
+        [
+          "service.name",
+          "test-service",
+        ],
+        [
+          "service.version",
+          "1.0.0",
+        ],
+      ],
+    },
+    "scopeMetrics": [
+      {
+        "metrics": [
+          {
+            "aggregationTemporality": 1,
+            "dataPointType": 3,
+            "dataPoints": [
+              {
+                "attributes": {
+                  "env": "dev",
+                  "team": "alpha",
+                },
+                "value": 5,
+              },
+              {
+                "attributes": {
+                  "env": "prod",
+                  "team": "beta",
+                },
+                "value": 3,
+              },
+            ],
+            "descriptor": {
+              "advice": {},
+              "description": "Test metric",
+              "name": "test.counter",
+              "type": "COUNTER",
+              "unit": "{test}",
+              "valueType": 1,
+            },
+            "isMonotonic": true,
+          },
+        ],
+        "scope": {
+          "name": "test-service",
+          "schemaUrl": undefined,
+          "version": "1.0.0",
+        },
+      },
+    ],
+  },
+]
+`;
+
+exports[`MetricsSubmitter should handles multiple metric types in one submission 1`] = `
+[
+  {
+    "resource": ResourceImpl {
+      "_asyncAttributesPending": false,
+      "_memoizedAttributes": undefined,
+      "_rawAttributes": [
+        [
+          "service.name",
+          "test-service",
+        ],
+        [
+          "service.version",
+          "1.0.0",
+        ],
+      ],
+    },
+    "scopeMetrics": [
+      {
+        "metrics": [
+          {
+            "aggregationTemporality": 1,
+            "dataPointType": 0,
+            "dataPoints": [
+              {
+                "attributes": {
+                  "test.name": "example",
+                },
+                "value": {
+                  "buckets": {
+                    "boundaries": [
+                      0,
+                      5,
+                      10,
+                      25,
+                      50,
+                      75,
+                      100,
+                      250,
+                      500,
+                      750,
+                      1000,
+                      2500,
+                      5000,
+                      7500,
+                      10000,
+                    ],
+                    "counts": [
+                      0,
+                      0,
+                      0,
+                      0,
+                      1,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                    ],
+                  },
+                  "count": 1,
+                  "max": 42,
+                  "min": 42,
+                  "sum": 42,
+                },
+              },
+            ],
+            "descriptor": {
+              "advice": {},
+              "description": "Test metric",
+              "name": "test.histogram",
+              "type": "HISTOGRAM",
+              "unit": "{test}",
+              "valueType": 1,
+            },
+          },
+          {
+            "aggregationTemporality": 1,
+            "dataPointType": 3,
+            "dataPoints": [
+              {
+                "attributes": {
+                  "test.name": "example",
+                },
+                "value": 10,
+              },
+            ],
+            "descriptor": {
+              "advice": {},
+              "description": "Test metric",
+              "name": "test.counter",
+              "type": "COUNTER",
+              "unit": "{test}",
+              "valueType": 1,
+            },
+            "isMonotonic": true,
+          },
+          {
+            "aggregationTemporality": 1,
+            "dataPointType": 3,
+            "dataPoints": [
+              {
+                "attributes": {
+                  "test.name": "example",
+                },
+                "value": -5,
+              },
+            ],
+            "descriptor": {
+              "advice": {},
+              "description": "Test metric",
+              "name": "test.updown",
+              "type": "UP_DOWN_COUNTER",
+              "unit": "{test}",
+              "valueType": 1,
+            },
+            "isMonotonic": false,
+          },
+        ],
+        "scope": {
+          "name": "test-service",
+          "schemaUrl": undefined,
+          "version": "1.0.0",
+        },
+      },
+    ],
+  },
+]
+`;
+
+exports[`MetricsSubmitter should handles updowncounter negative values correctly 1`] = `
+[
+  {
+    "resource": ResourceImpl {
+      "_asyncAttributesPending": false,
+      "_memoizedAttributes": undefined,
+      "_rawAttributes": [
+        [
+          "service.name",
+          "test-service",
+        ],
+        [
+          "service.version",
+          "1.0.0",
+        ],
+      ],
+    },
+    "scopeMetrics": [
+      {
+        "metrics": [
+          {
+            "aggregationTemporality": 1,
+            "dataPointType": 3,
+            "dataPoints": [
+              {
+                "attributes": {
+                  "test.name": "example",
+                },
+                "value": -5,
+              },
+            ],
+            "descriptor": {
+              "advice": {},
+              "description": "Test metric",
+              "name": "test.updown",
+              "type": "UP_DOWN_COUNTER",
+              "unit": "{test}",
+              "valueType": 1,
+            },
+            "isMonotonic": false,
+          },
+        ],
+        "scope": {
+          "name": "test-service",
+          "schemaUrl": undefined,
+          "version": "1.0.0",
+        },
+      },
+    ],
+  },
+]
+`;
+
+exports[`MetricsSubmitter should reuses existing instruments for same metric name 1`] = `
+[
+  {
+    "resource": ResourceImpl {
+      "_asyncAttributesPending": false,
+      "_memoizedAttributes": undefined,
+      "_rawAttributes": [
+        [
+          "service.name",
+          "test-service",
+        ],
+        [
+          "service.version",
+          "1.0.0",
+        ],
+      ],
+    },
+    "scopeMetrics": [
+      {
+        "metrics": [
+          {
+            "aggregationTemporality": 1,
+            "dataPointType": 3,
+            "dataPoints": [
+              {
+                "attributes": {
+                  "test.name": "example",
+                },
+                "value": 3,
+              },
+            ],
+            "descriptor": {
+              "advice": {},
+              "description": "Test metric",
+              "name": "test.counter",
+              "type": "COUNTER",
+              "unit": "{test}",
+              "valueType": 1,
+            },
+            "isMonotonic": true,
+          },
+        ],
+        "scope": {
+          "name": "test-service",
+          "schemaUrl": undefined,
+          "version": "1.0.0",
+        },
+      },
+    ],
+  },
+]
+`;

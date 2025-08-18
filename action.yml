@@ -1,0 +1,38 @@
+name: Otel CI Visibility
+description:
+  A GitHub Action to send CI visibility data using OpenTelemetry. Metrics are
+  being sent over OTLP/HTTP to a specified endpoint. GRPC will be supported in a
+  future release.
+author: Borislav Iv., Redis Inc.
+
+branding:
+  icon: bar-chart-2
+  color: green
+
+inputs:
+  junit-xml-folder:
+    description: Path to the folder containing JUnit XML files.
+    required: true
+  service-name:
+    description: OpenTelemetry service name.
+    required: true
+  service-version:
+    description: OpenTelemetry service version.
+    required: false
+  service-namespace:
+    description: OpenTelemetry service namespace.
+    required: true
+  deployment-environment:
+    description: OpenTelemetry deployment environment.
+    required: true
+    default: staging
+  otlp-endpoint:
+    description: OpenTelemetry OTLP endpoint.
+    required: true
+  otlp-headers:
+    description: OpenTelemetry OTLP headers.
+    required: false
+
+runs:
+  using: node24
+  main: dist/index.js
