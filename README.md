@@ -7,8 +7,7 @@ Extracts test metrics from JUnit XML files and ships them to OTLP endpoints.
 - Reads JUnit XML files from a directory
 - Parses test results (passed/failed/skipped/errors)
 - Generates OpenTelemetry metrics with proper semantic conventions
-- Ships metrics to OTLP-compatible backends. HTTP only for now, gRPC support
-  coming soon.
+- Ships metrics to OTLP-compatible backends
 
 ## Usage
 

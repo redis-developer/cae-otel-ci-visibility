@@ -4,10 +4,11 @@ import { ingestDir } from './junit-parser.js'
 import { generateMetrics, type TMetricsConfig } from './metrics-generator.js'
 import { MetricsSubmitter } from './metrics-submitter.js'
 import {
+  ConsoleMetricExporter,
   MeterProvider,
   PeriodicExportingMetricReader
 } from '@opentelemetry/sdk-metrics'
-import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
+import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto'
 import { resourceFromAttributes } from '@opentelemetry/resources'
 import {
   ATTR_SERVICE_NAME,
@@ -70,14 +71,25 @@ export async function run(): Promise<void> {
       timeoutMillis: DEFAULT_TIMEOUT_MS
     })
 
-    const meterProvider = new MeterProvider({
-      resource,
-      readers: [
+    const readers = [
+      new PeriodicExportingMetricReader({
+        exporter,
+        exportIntervalMillis: DEFAULT_EXPORT_INTERVAL_MS
+      })
+    ]
+
+    if (process.env.ACTIONS_STEP_DEBUG === 'true') {
+      readers.push(
         new PeriodicExportingMetricReader({
-          exporter,
+          exporter: new ConsoleMetricExporter(),
           exportIntervalMillis: DEFAULT_EXPORT_INTERVAL_MS
         })
-      ]
+      )
+    }
+
+    const meterProvider = new MeterProvider({
+      resource,
+      readers
     })
 
     const metricsSubmitter = new MetricsSubmitter(config, meterProvider)

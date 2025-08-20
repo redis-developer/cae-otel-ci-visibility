@@ -30,7 +30,8 @@ const mockMeterProvider = {
 
 const mockOpenTelemetry = {
   MeterProvider: jest.fn(() => mockMeterProvider),
-  PeriodicExportingMetricReader: jest.fn(() => ({}))
+  PeriodicExportingMetricReader: jest.fn(() => ({})),
+  ConsoleMetricExporter: jest.fn(() => ({}))
 }
 
 const mockOTLPExporter = {
@@ -56,7 +57,7 @@ jest.unstable_mockModule('@actions/core', () => mockCore)
 jest.unstable_mockModule('@actions/github', () => mockGithub)
 jest.unstable_mockModule('@opentelemetry/sdk-metrics', () => mockOpenTelemetry)
 jest.unstable_mockModule(
-  '@opentelemetry/exporter-metrics-otlp-http',
+  '@opentelemetry/exporter-metrics-otlp-proto',
   () => mockOTLPExporter
 )
 jest.unstable_mockModule('@opentelemetry/resources', () => mockResources)
