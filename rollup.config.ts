@@ -12,7 +12,7 @@ const config = {
     format: 'es',
     sourcemap: true
   },
-  // external: [/^@opentelemetry\//],
+  external: [/^@opentelemetry\//],
   plugins: [typescript(), nodeResolve({ preferBuiltins: true }), commonjs()]
 }
 
