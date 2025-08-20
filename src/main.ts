@@ -4,7 +4,6 @@ import { ingestDir } from './junit-parser.js'
 import { generateMetrics, type TMetricsConfig } from './metrics-generator.js'
 import { MetricsSubmitter } from './metrics-submitter.js'
 import {
-  ConsoleMetricExporter,
   MeterProvider,
   PeriodicExportingMetricReader
 } from '@opentelemetry/sdk-metrics'
@@ -21,6 +20,7 @@ import {
 
 const DEFAULT_EXPORT_INTERVAL_MS = 1000
 const DEFAULT_TIMEOUT_MS = 30000
+import { DiagConsoleLogger, DiagLogLevel, diag } from '@opentelemetry/api'
 
 export async function run(): Promise<void> {
   try {
@@ -79,12 +79,7 @@ export async function run(): Promise<void> {
     ]
 
     if (process.env.ACTIONS_STEP_DEBUG === 'true') {
-      readers.push(
-        new PeriodicExportingMetricReader({
-          exporter: new ConsoleMetricExporter(),
-          exportIntervalMillis: DEFAULT_EXPORT_INTERVAL_MS
-        })
-      )
+      diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG)
     }
 
     const meterProvider = new MeterProvider({

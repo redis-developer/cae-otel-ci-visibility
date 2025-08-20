@@ -59,7 +59,7 @@ jobs:
             secrets.SELF_CHECK_OTEL_AUTHORIZATION_TOKEN}}"}'
         env:
           OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf'
-          ACTIONS_STEP_DEBUG: 'false'
+          ACTIONS_STEP_DEBUG: 'true'
 
       - name: Verify Test Results
         id: verify
