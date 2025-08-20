@@ -34253,6 +34253,64 @@ var ROOT_CONTEXT = new BaseContext();
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+var consoleMap = [
+    { n: 'error', c: 'error' },
+    { n: 'warn', c: 'warn' },
+    { n: 'info', c: 'info' },
+    { n: 'debug', c: 'debug' },
+    { n: 'verbose', c: 'trace' },
+];
+/**
+ * A simple Immutable Console based diagnostic logger which will output any messages to the Console.
+ * If you want to limit the amount of logging to a specific level or lower use the
+ * {@link createLogLevelDiagLogger}
+ */
+var DiagConsoleLogger = /** @class */ (function () {
+    function DiagConsoleLogger() {
+        function _consoleFunc(funcName) {
+            return function () {
+                var args = [];
+                for (var _i = 0; _i < arguments.length; _i++) {
+                    args[_i] = arguments[_i];
+                }
+                if (console) {
+                    // Some environments only expose the console when the F12 developer console is open
+                    // eslint-disable-next-line no-console
+                    var theFunc = console[funcName];
+                    if (typeof theFunc !== 'function') {
+                        // Not all environments support all functions
+                        // eslint-disable-next-line no-console
+                        theFunc = console.log;
+                    }
+                    // One last final check
+                    if (typeof theFunc === 'function') {
+                        return theFunc.apply(console, args);
+                    }
+                }
+            };
+        }
+        for (var i = 0; i < consoleMap.length; i++) {
+            this[consoleMap[i].n] = _consoleFunc(consoleMap[i].c);
+        }
+    }
+    return DiagConsoleLogger;
+}());
+
+/*
+ * Copyright The OpenTelemetry Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 var __extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
@@ -37484,67 +37542,6 @@ class PeriodicExportingMetricReader extends MetricReader {
         }
         await this.onForceFlush();
         await this._exporter.shutdown();
-    }
-}
-
-/*
- * Copyright The OpenTelemetry Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * This is an implementation of {@link PushMetricExporter} that prints metrics to the
- * console. This class can be used for diagnostic purposes.
- *
- * NOTE: This {@link PushMetricExporter} is intended for diagnostics use only, output rendered to the console may change at any time.
- */
-/* eslint-disable no-console */
-class ConsoleMetricExporter {
-    _shutdown = false;
-    _temporalitySelector;
-    constructor(options) {
-        this._temporalitySelector =
-            options?.temporalitySelector ?? DEFAULT_AGGREGATION_TEMPORALITY_SELECTOR;
-    }
-    export(metrics, resultCallback) {
-        if (this._shutdown) {
-            // If the exporter is shutting down, by spec, we need to return FAILED as export result
-            setImmediate(resultCallback, { code: ExportResultCode.FAILED });
-            return;
-        }
-        return ConsoleMetricExporter._sendMetrics(metrics, resultCallback);
-    }
-    forceFlush() {
-        return Promise.resolve();
-    }
-    selectAggregationTemporality(_instrumentType) {
-        return this._temporalitySelector(_instrumentType);
-    }
-    shutdown() {
-        this._shutdown = true;
-        return Promise.resolve();
-    }
-    static _sendMetrics(metrics, done) {
-        for (const scopeMetrics of metrics.scopeMetrics) {
-            for (const metric of scopeMetrics.metrics) {
-                console.dir({
-                    descriptor: metric.descriptor,
-                    dataPointType: metric.dataPointType,
-                    dataPoints: metric.dataPoints,
-                }, { depth: null });
-            }
-        }
-        done({ code: ExportResultCode.SUCCESS });
     }
 }
 
@@ -56955,8 +56952,44 @@ const ATTR_SERVICE_NAMESPACE = 'service.namespace';
 
 const DEFAULT_EXPORT_INTERVAL_MS = 1000;
 const DEFAULT_TIMEOUT_MS = 30000;
+class CapturingDiagLogger {
+    baseLogger;
+    capturedOutput = '';
+    constructor() {
+        this.baseLogger = new DiagConsoleLogger();
+    }
+    capture(level, message, ...args) {
+        const fullMessage = `[${level}] ${message} ${args.join(' ')}\n`;
+        this.capturedOutput += fullMessage;
+    }
+    error = (message, ...args) => {
+        this.capture('ERROR', message, ...args);
+        this.baseLogger.error(message, ...args);
+    };
+    warn = (message, ...args) => {
+        this.capture('WARN', message, ...args);
+        this.baseLogger.warn(message, ...args);
+    };
+    info = (message, ...args) => {
+        this.capture('INFO', message, ...args);
+        this.baseLogger.info(message, ...args);
+    };
+    debug = (message, ...args) => {
+        this.capture('DEBUG', message, ...args);
+        this.baseLogger.debug(message, ...args);
+    };
+    verbose = (message, ...args) => {
+        this.capture('VERBOSE', message, ...args);
+        this.baseLogger.verbose(message, ...args);
+    };
+    getCapturedOutput() {
+        return this.capturedOutput;
+    }
+}
 async function run() {
     try {
+        const logger = new CapturingDiagLogger();
+        diag.setLogger(logger, DiagLogLevel.ERROR);
         const junitXmlFolder = coreExports.getInput('junit-xml-folder', { required: true });
         const serviceName = coreExports.getInput('service-name', { required: true });
         const serviceNamespace = coreExports.getInput('service-namespace', {
@@ -56999,12 +57032,6 @@ async function run() {
                 exportIntervalMillis: DEFAULT_EXPORT_INTERVAL_MS
             })
         ];
-        if (process.env.ACTIONS_STEP_DEBUG === 'true') {
-            readers.push(new PeriodicExportingMetricReader({
-                exporter: new ConsoleMetricExporter(),
-                exportIntervalMillis: DEFAULT_EXPORT_INTERVAL_MS
-            }));
-        }
         const meterProvider = new MeterProvider({
             resource,
             readers
@@ -57026,7 +57053,14 @@ async function run() {
         metricsSubmitter.submitMetrics(metricDataPoints);
         coreExports.info(`Summary: ${report.totals.tests} tests, ${report.totals.failed} failures, ${report.totals.error} errors, ${report.totals.skipped} skipped`);
         await meterProvider.forceFlush();
-        coreExports.info(`✅ CI visibility metrics submitted successfully`);
+        const diagOutput = logger.getCapturedOutput();
+        if (diagOutput.includes('metrics export failed')) {
+            coreExports.error(`❌ CI visibility metrics submission failed: ${diagOutput}`);
+            coreExports.setFailed(`Action failed: ${diagOutput}`);
+        }
+        else {
+            coreExports.info(`✅ CI visibility metrics submitted successfully`);
+        }
     }
     catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
