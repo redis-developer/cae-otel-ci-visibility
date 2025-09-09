@@ -33398,7 +33398,7 @@ const generateSuiteMetrics = (suite, baseAttributes) => {
         attributes: suiteAttributes,
         description: 'Test suite execution time (from XML time attribute)',
         unit: 's',
-        buckets: [0.1, 0.5, 1, 5, 10, 30, 60, 120, 300, 600]
+        buckets: [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100]
     });
     metrics.push({
         metricName: 'test.suite.cumulative_duration',
@@ -33407,7 +33407,7 @@ const generateSuiteMetrics = (suite, baseAttributes) => {
         attributes: suiteAttributes,
         description: 'Test suite cumulative time (calculated from child elements)',
         unit: 's',
-        buckets: [0.1, 0.5, 1, 5, 10, 30, 60, 120, 300, 600]
+        buckets: [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100]
     });
     const statusCounts = [
         { status: 'passed', count: suite.totals.passed },
@@ -33456,7 +33456,7 @@ const generateTestCaseMetrics = (testCase, suiteAttributes) => {
         attributes: testAttributes,
         description: 'Individual test execution time',
         unit: 's',
-        buckets: [0.1, 0.5, 1, 5, 10, 30, 60, 120, 300, 600]
+        buckets: [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100]
     });
     metrics.push({
         metricName: 'test.status',

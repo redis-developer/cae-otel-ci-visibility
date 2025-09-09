@@ -55,3 +55,4 @@ jobs:
           VALIDATE_TYPESCRIPT_ES: false
           VALIDATE_JSON: false
           VALIDATE_NATURAL_LANGUAGE: false
+          VALIDATE_GITHUB_ACTIONS: false

@@ -125,10 +125,10 @@ describe('generateMetrics', () => {
     )
 
     expect(testDuration?.buckets).toEqual([
-      0.1, 0.5, 1, 5, 10, 30, 60, 120, 300, 600
+      0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100
     ])
     expect(suiteDuration?.buckets).toEqual([
-      0.1, 0.5, 1, 5, 10, 30, 60, 120, 300, 600
+      0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100
     ])
   })
 
