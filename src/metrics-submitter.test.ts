@@ -111,7 +111,12 @@ describe('MetricsSubmitter', () => {
       resource: testResource,
       readers: [metricReader]
     })
-    submitter = new MetricsSubmitter(config, meterProvider)
+    submitter = new MetricsSubmitter(
+      config,
+      meterProvider,
+      'test-namespace',
+      'v1'
+    )
   })
 
   afterEach(async () => {

@@ -92,6 +92,10 @@ export async function run(): Promise<void> {
 
     const headers = parseOtlpHeaders(otlpHeaders)
 
+    const metricsNamespace = core.getInput('metrics-namespace') || 'cae'
+
+    const metricsVersion = core.getInput('metrics-version') || 'v1'
+
     const config: TMetricsConfig = {
       serviceName,
       serviceNamespace,
@@ -136,7 +140,12 @@ export async function run(): Promise<void> {
       readers
     })
 
-    const metricsSubmitter = new MetricsSubmitter(config, meterProvider)
+    const metricsSubmitter = new MetricsSubmitter(
+      config,
+      meterProvider,
+      metricsNamespace,
+      metricsVersion
+    )
 
     core.info(`📊 Processing JUnit XML files from: ${junitXmlFolder}`)
 

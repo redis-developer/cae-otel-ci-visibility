@@ -33529,11 +33529,15 @@ class MetricsSubmitter {
     histograms = new Map();
     counters = new Map();
     upDownCounters = new Map();
-    constructor(config, meterProvider) {
+    namespace;
+    version;
+    constructor(config, meterProvider, namespace, version) {
         if (meterProvider) {
             metrics.disable();
             metrics.setGlobalMeterProvider(meterProvider);
         }
+        this.namespace = namespace;
+        this.version = version;
         this.meter = metrics.getMeter(config.serviceName, config.serviceVersion);
     }
     submitMetrics(metricDataPoints) {
@@ -33574,18 +33578,18 @@ class MetricsSubmitter {
         return options;
     }
     recordHistogram(dataPoint) {
-        const histogram = this.getOrCreateMetric(dataPoint.metricName, this.histograms, () => this.meter.createHistogram(dataPoint.metricName, this.createHistogramOptions(dataPoint)));
+        const histogram = this.getOrCreateMetric(dataPoint.metricName, this.histograms, () => this.meter.createHistogram(`${this.namespace}.${this.version}.${dataPoint.metricName}`, this.createHistogramOptions(dataPoint)));
         histogram.record(dataPoint.value, dataPoint.attributes);
     }
     incrementCounter(dataPoint) {
-        const counter = this.getOrCreateMetric(dataPoint.metricName, this.counters, () => this.meter.createCounter(dataPoint.metricName, {
+        const counter = this.getOrCreateMetric(dataPoint.metricName, this.counters, () => this.meter.createCounter(`${this.namespace}.${this.version}.${dataPoint.metricName}`, {
             description: dataPoint.description,
             unit: dataPoint.unit
         }));
         counter.add(dataPoint.value, dataPoint.attributes);
     }
     updateUpDownCounter(dataPoint) {
-        const upDownCounter = this.getOrCreateMetric(dataPoint.metricName, this.upDownCounters, () => this.meter.createUpDownCounter(dataPoint.metricName, {
+        const upDownCounter = this.getOrCreateMetric(dataPoint.metricName, this.upDownCounters, () => this.meter.createUpDownCounter(`${this.namespace}.${this.version}.${dataPoint.metricName}`, {
             description: dataPoint.description,
             unit: dataPoint.unit
         }));
@@ -33643,6 +33647,8 @@ async function run() {
         const serviceVersion = coreExports.getInput('service-version') || githubExports.context.sha.substring(0, 8);
         const otlpHeaders = coreExports.getInput('otlp-headers') || '';
         const headers = parseOtlpHeaders(otlpHeaders);
+        const metricsNamespace = coreExports.getInput('metrics-namespace') || 'cae';
+        const metricsVersion = coreExports.getInput('metrics-version') || 'v1';
         const config = {
             serviceName,
             serviceNamespace,
@@ -33679,7 +33685,7 @@ async function run() {
             resource,
             readers
         });
-        const metricsSubmitter = new MetricsSubmitter(config, meterProvider);
+        const metricsSubmitter = new MetricsSubmitter(config, meterProvider, metricsNamespace, metricsVersion);
         coreExports.info(`📊 Processing JUnit XML files from: ${junitXmlFolder}`);
         const ingestResult = ingestDir(junitXmlFolder);
         if (!ingestResult.success) {

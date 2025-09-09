@@ -15,16 +15,22 @@ export class MetricsSubmitter {
   private readonly histograms = new Map<string, Histogram>()
   private readonly counters = new Map<string, Counter>()
   private readonly upDownCounters = new Map<string, UpDownCounter>()
+  private readonly namespace
+  private readonly version
 
   constructor(
     config: TMetricsConfig,
-    meterProvider: MeterProvider | undefined
+    meterProvider: MeterProvider | undefined,
+    namespace: string,
+    version: string
   ) {
     if (meterProvider) {
       metrics.disable()
       metrics.setGlobalMeterProvider(meterProvider)
     }
 
+    this.namespace = namespace
+    this.version = version
     this.meter = metrics.getMeter(config.serviceName, config.serviceVersion)
   }
 
@@ -81,7 +87,7 @@ export class MetricsSubmitter {
       this.histograms,
       () =>
         this.meter.createHistogram(
-          dataPoint.metricName,
+          `${this.namespace}.${this.version}.${dataPoint.metricName}`,
           this.createHistogramOptions(dataPoint)
         )
     )
@@ -94,10 +100,13 @@ export class MetricsSubmitter {
       dataPoint.metricName,
       this.counters,
       () =>
-        this.meter.createCounter(dataPoint.metricName, {
-          description: dataPoint.description,
-          unit: dataPoint.unit
-        })
+        this.meter.createCounter(
+          `${this.namespace}.${this.version}.${dataPoint.metricName}`,
+          {
+            description: dataPoint.description,
+            unit: dataPoint.unit
+          }
+        )
     )
 
     counter.add(dataPoint.value, dataPoint.attributes)
@@ -108,10 +117,13 @@ export class MetricsSubmitter {
       dataPoint.metricName,
       this.upDownCounters,
       () =>
-        this.meter.createUpDownCounter(dataPoint.metricName, {
-          description: dataPoint.description,
-          unit: dataPoint.unit
-        })
+        this.meter.createUpDownCounter(
+          `${this.namespace}.${this.version}.${dataPoint.metricName}`,
+          {
+            description: dataPoint.description,
+            unit: dataPoint.unit
+          }
+        )
     )
 
     upDownCounter.add(dataPoint.value, dataPoint.attributes)

@@ -64,7 +64,7 @@ exports[`MetricsSubmitter should configures histogram with explicit buckets 1`] 
                 ],
               },
               "description": "Test metric",
-              "name": "test.duration",
+              "name": "test-namespace.v1.test.duration",
               "type": "HISTOGRAM",
               "unit": "{test}",
               "valueType": 1,
@@ -158,7 +158,7 @@ exports[`MetricsSubmitter should creates instruments for each metric type 1`] = 
             "descriptor": {
               "advice": {},
               "description": "Test metric",
-              "name": "test.duration",
+              "name": "test-namespace.v1.test.duration",
               "type": "HISTOGRAM",
               "unit": "s",
               "valueType": 1,
@@ -178,7 +178,7 @@ exports[`MetricsSubmitter should creates instruments for each metric type 1`] = 
             "descriptor": {
               "advice": {},
               "description": "Test metric",
-              "name": "test.status",
+              "name": "test-namespace.v1.test.status",
               "type": "COUNTER",
               "unit": "{test}",
               "valueType": 1,
@@ -199,7 +199,7 @@ exports[`MetricsSubmitter should creates instruments for each metric type 1`] = 
             "descriptor": {
               "advice": {},
               "description": "Test metric",
-              "name": "test.suite.total",
+              "name": "test-namespace.v1.test.suite.total",
               "type": "UP_DOWN_COUNTER",
               "unit": "{test}",
               "valueType": 1,
@@ -260,7 +260,7 @@ exports[`MetricsSubmitter should handles metrics with different attributes corre
             "descriptor": {
               "advice": {},
               "description": "Test metric",
-              "name": "test.counter",
+              "name": "test-namespace.v1.test.counter",
               "type": "COUNTER",
               "unit": "{test}",
               "valueType": 1,
@@ -355,7 +355,7 @@ exports[`MetricsSubmitter should handles multiple metric types in one submission
             "descriptor": {
               "advice": {},
               "description": "Test metric",
-              "name": "test.histogram",
+              "name": "test-namespace.v1.test.histogram",
               "type": "HISTOGRAM",
               "unit": "{test}",
               "valueType": 1,
@@ -375,7 +375,7 @@ exports[`MetricsSubmitter should handles multiple metric types in one submission
             "descriptor": {
               "advice": {},
               "description": "Test metric",
-              "name": "test.counter",
+              "name": "test-namespace.v1.test.counter",
               "type": "COUNTER",
               "unit": "{test}",
               "valueType": 1,
@@ -396,7 +396,7 @@ exports[`MetricsSubmitter should handles multiple metric types in one submission
             "descriptor": {
               "advice": {},
               "description": "Test metric",
-              "name": "test.updown",
+              "name": "test-namespace.v1.test.updown",
               "type": "UP_DOWN_COUNTER",
               "unit": "{test}",
               "valueType": 1,
@@ -449,7 +449,7 @@ exports[`MetricsSubmitter should handles updowncounter negative values correctly
             "descriptor": {
               "advice": {},
               "description": "Test metric",
-              "name": "test.updown",
+              "name": "test-namespace.v1.test.updown",
               "type": "UP_DOWN_COUNTER",
               "unit": "{test}",
               "valueType": 1,
@@ -502,7 +502,7 @@ exports[`MetricsSubmitter should reuses existing instruments for same metric nam
             "descriptor": {
               "advice": {},
               "description": "Test metric",
-              "name": "test.counter",
+              "name": "test-namespace.v1.test.counter",
               "type": "COUNTER",
               "unit": "{test}",
               "valueType": 1,
