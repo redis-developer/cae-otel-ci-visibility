@@ -42,7 +42,7 @@ jobs:
 
       - name: Setup Ruby
         id: setup-ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@44511735964dcb71245e7e55f72539531f7bc0ebt
         with:
           ruby-version: ruby
 
