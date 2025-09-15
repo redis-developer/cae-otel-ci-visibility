@@ -4,12 +4,6 @@ import * as github from '@actions/github'
 import { ingestDir } from './junit-parser.js'
 import { generateMetrics, type TMetricsConfig } from './metrics-generator.js'
 import { MetricsSubmitter } from './metrics-submitter.js'
-import {
-  InstrumentType,
-  MeterProvider,
-  PeriodicExportingMetricReader
-} from '@opentelemetry/sdk-metrics'
-import { AggregationType } from '@opentelemetry/sdk-metrics'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto'
 import { resourceFromAttributes } from '@opentelemetry/resources'
 import {
@@ -30,9 +24,16 @@ import {
   DiagLogger,
   diag
 } from '@opentelemetry/api'
-import { DEFAULT_AGGREGATION_SELECTOR } from '@opentelemetry/sdk-metrics/build/src/export/AggregationSelector.js'
-import { ExponentialHistogramAggregationOption } from '@opentelemetry/sdk-metrics/build/src/view/AggregationOption.js'
 
+import {
+  AggregationSelector,
+  MeterProvider,
+  PeriodicExportingMetricReader
+} from '@opentelemetry/sdk-metrics'
+import { DEFAULT_AGGREGATION_SELECTOR } from '@opentelemetry/sdk-metrics/build/src/export/AggregationSelector.js'
+import { InstrumentType } from '@opentelemetry/sdk-metrics/build/src/export/MetricData.js'
+
+import { AggregationType } from '@opentelemetry/sdk-metrics'
 class CapturingDiagLogger implements DiagLogger {
   private baseLogger: DiagConsoleLogger
   private capturedOutput: string = ''
@@ -98,7 +99,7 @@ export async function run(): Promise<void> {
 
     const metricsNamespace = core.getInput('metrics-namespace') || 'cae'
 
-    const metricsVersion = core.getInput('metrics-version') || 'v3'
+    const metricsVersion = core.getInput('metrics-version') || 'v4'
 
     const config: TMetricsConfig = {
       serviceName,
@@ -126,17 +127,21 @@ export async function run(): Promise<void> {
       [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: deploymentEnvironment
     })
 
-    const aggregationPreference = (t: InstrumentType) => {
-      if (t === 'HISTOGRAM') {
+    const aggregationPreference: AggregationSelector = (t: InstrumentType) => {
+      if (t === InstrumentType.HISTOGRAM) {
+        core.info(
+          `The current aggregationPreference for histograms is: EXPONENTIAL_HISTOGRAM `
+        )
         return {
           type: AggregationType.EXPONENTIAL_HISTOGRAM,
           options: {
             recordMinMax: true
           }
-        } as ExponentialHistogramAggregationOption
+        }
       }
       return DEFAULT_AGGREGATION_SELECTOR(t)
     }
+
     const exporter = new OTLPMetricExporter({
       aggregationPreference,
       url: otlpEndpoint,
