@@ -33662,7 +33662,6 @@ async function run() {
         });
         const aggregationPreference = (t) => {
             if (t === InstrumentType.HISTOGRAM) {
-                coreExports.info(`The current aggregationPreference for histograms is: EXPONENTIAL_HISTOGRAM `);
                 return {
                     type: AggregationType.EXPONENTIAL_HISTOGRAM,
                     options: {

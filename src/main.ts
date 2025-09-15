@@ -129,9 +129,6 @@ export async function run(): Promise<void> {
 
     const aggregationPreference: AggregationSelector = (t: InstrumentType) => {
       if (t === InstrumentType.HISTOGRAM) {
-        core.info(
-          `The current aggregationPreference for histograms is: EXPONENTIAL_HISTOGRAM `
-        )
         return {
           type: AggregationType.EXPONENTIAL_HISTOGRAM,
           options: {
