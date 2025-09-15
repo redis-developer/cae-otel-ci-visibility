@@ -33,7 +33,7 @@ import {
 import { DEFAULT_AGGREGATION_SELECTOR } from '@opentelemetry/sdk-metrics/build/src/export/AggregationSelector.js'
 import { InstrumentType } from '@opentelemetry/sdk-metrics/build/src/export/MetricData.js'
 
-import { AggregationType } from '@opentelemetry/sdk-metrics'
+import { AggregationType, ViewOptions } from '@opentelemetry/sdk-metrics'
 class CapturingDiagLogger implements DiagLogger {
   private baseLogger: DiagConsoleLogger
   private capturedOutput: string = ''
@@ -99,7 +99,7 @@ export async function run(): Promise<void> {
 
     const metricsNamespace = core.getInput('metrics-namespace') || 'cae'
 
-    const metricsVersion = core.getInput('metrics-version') || 'v4'
+    const metricsVersion = core.getInput('metrics-version') || 'v5'
 
     const config: TMetricsConfig = {
       serviceName,
@@ -153,8 +153,19 @@ export async function run(): Promise<void> {
       })
     ]
 
+    const views: ViewOptions = {
+      instrumentType: InstrumentType.HISTOGRAM,
+      aggregation: {
+        type: AggregationType.EXPONENTIAL_HISTOGRAM,
+        options: {
+          recordMinMax: true
+        }
+      }
+    }
+
     const meterProvider = new MeterProvider({
       resource,
+      views: [views],
       readers
     })
 
