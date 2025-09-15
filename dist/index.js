@@ -33637,7 +33637,7 @@ async function run() {
         const otlpHeaders = coreExports.getInput('otlp-headers') || '';
         const headers = parseOtlpHeaders(otlpHeaders);
         const metricsNamespace = coreExports.getInput('metrics-namespace') || 'cae';
-        const metricsVersion = coreExports.getInput('metrics-version') || 'v2';
+        const metricsVersion = coreExports.getInput('metrics-version') || 'v3';
         const config = {
             serviceName,
             serviceNamespace,
