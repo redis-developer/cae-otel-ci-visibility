@@ -7,9 +7,9 @@ import { MetricsSubmitter } from './metrics-submitter.js'
 import {
   InstrumentType,
   MeterProvider,
-  PeriodicExportingMetricReader,
-  AggregationType
+  PeriodicExportingMetricReader
 } from '@opentelemetry/sdk-metrics'
+import { AggregationType } from '@opentelemetry/sdk-metrics/build/esm/view/AggregationOption.js'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto'
 import { resourceFromAttributes } from '@opentelemetry/resources'
 import {
@@ -98,7 +98,7 @@ export async function run(): Promise<void> {
 
     const metricsNamespace = core.getInput('metrics-namespace') || 'cae'
 
-    const metricsVersion = core.getInput('metrics-version') || 'v2'
+    const metricsVersion = core.getInput('metrics-version') || 'v3'
 
     const config: TMetricsConfig = {
       serviceName,
