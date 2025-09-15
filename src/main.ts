@@ -19,7 +19,7 @@ import {
   ATTR_SERVICE_NAMESPACE
 } from '@opentelemetry/semantic-conventions/incubating'
 
-const DEFAULT_EXPORT_INTERVAL_MS = 1000
+const DEFAULT_EXPORT_INTERVAL_MS = 15000
 const DEFAULT_TIMEOUT_MS = 30000
 import {
   DiagConsoleLogger,
@@ -94,7 +94,7 @@ export async function run(): Promise<void> {
 
     const metricsNamespace = core.getInput('metrics-namespace') || 'cae'
 
-    const metricsVersion = core.getInput('metrics-version') || 'v1'
+    const metricsVersion = core.getInput('metrics-version') || 'v2'
 
     const config: TMetricsConfig = {
       serviceName,

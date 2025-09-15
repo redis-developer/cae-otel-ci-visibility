@@ -72,12 +72,6 @@ export class MetricsSubmitter {
       unit: dataPoint.unit
     }
 
-    if (dataPoint.buckets) {
-      options.advice = {
-        explicitBucketBoundaries: dataPoint.buckets.concat()
-      }
-    }
-
     return options
   }
 

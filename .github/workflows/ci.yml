@@ -64,3 +64,4 @@ jobs:
         env:
           OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf'
           ACTIONS_STEP_DEBUG: 'true'
+          OTEL_EXPORTER_OTLP_METRICS_DEFAULT_HISTOGRAM_AGGREGATION: 'base2_exponential_bucket_histogram'

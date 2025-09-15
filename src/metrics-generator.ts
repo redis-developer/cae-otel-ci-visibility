@@ -18,7 +18,6 @@ export interface TMetricDataPoint {
   readonly attributes: Readonly<Record<string, string>>
   readonly description: string
   readonly unit: string | undefined
-  readonly buckets: readonly number[] | undefined
 }
 
 export const generateMetrics = (
@@ -53,8 +52,7 @@ const generateSuiteMetrics = (
     value: suite.totals.time,
     attributes: suiteAttributes,
     description: 'Test suite execution time (from XML time attribute)',
-    unit: 's',
-    buckets: [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100]
+    unit: 's'
   })
 
   metrics.push({
@@ -63,8 +61,7 @@ const generateSuiteMetrics = (
     value: suite.totals.cumulativeTime,
     attributes: suiteAttributes,
     description: 'Test suite cumulative time (calculated from child elements)',
-    unit: 's',
-    buckets: [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100]
+    unit: 's'
   })
 
   const statusCounts = [
@@ -85,8 +82,7 @@ const generateSuiteMetrics = (
           'test.status': status
         },
         description: 'Current test count per suite by status',
-        unit: '{test}',
-        buckets: undefined
+        unit: '{test}'
       })
     }
   }
@@ -123,8 +119,7 @@ const generateTestCaseMetrics = (
     value: testCase.time,
     attributes: testAttributes,
     description: 'Individual test execution time',
-    unit: 's',
-    buckets: [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100]
+    unit: 's'
   })
 
   metrics.push({
@@ -133,8 +128,7 @@ const generateTestCaseMetrics = (
     value: 1,
     attributes: testAttributes,
     description: 'Test execution count by status',
-    unit: '{test}',
-    buckets: undefined
+    unit: '{test}'
   })
 
   switch (testCase.result.status) {
@@ -149,8 +143,7 @@ const generateTestCaseMetrics = (
             'failure.type': testCase.result.type
           },
           description: 'Test failures by type',
-          unit: '{failure}',
-          buckets: undefined
+          unit: '{failure}'
         })
       }
       break
@@ -166,8 +159,7 @@ const generateTestCaseMetrics = (
             'error.type': testCase.result.type
           },
           description: 'Test errors by type',
-          unit: '{error}',
-          buckets: undefined
+          unit: '{error}'
         })
       }
       break

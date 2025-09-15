@@ -94,7 +94,6 @@ describe('MetricsSubmitter', () => {
     attributes: { 'test.name': 'example' },
     description: 'Test metric',
     unit: '{test}',
-    buckets: undefined,
     ...overrides
   })
 
@@ -150,8 +149,7 @@ describe('MetricsSubmitter', () => {
       metrics: [
         createDataPoint({
           metricName: 'test.duration',
-          metricType: 'histogram',
-          buckets: [0.1, 0.5, 1, 5, 10]
+          metricType: 'histogram'
         })
       ]
     },
