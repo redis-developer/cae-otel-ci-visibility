@@ -16,6 +16,7 @@ exports[`MetricsSubmitter should configures histogram with explicit buckets 1`] 
           "1.0.0",
         ],
       ],
+      "_schemaUrl": undefined,
     },
     "scopeMetrics": [
       {
@@ -110,6 +111,7 @@ exports[`MetricsSubmitter should creates instruments for each metric type 1`] = 
           "1.0.0",
         ],
       ],
+      "_schemaUrl": undefined,
     },
     "scopeMetrics": [
       {
@@ -246,6 +248,7 @@ exports[`MetricsSubmitter should handles metrics with different attributes corre
           "1.0.0",
         ],
       ],
+      "_schemaUrl": undefined,
     },
     "scopeMetrics": [
       {
@@ -307,6 +310,7 @@ exports[`MetricsSubmitter should handles multiple metric types in one submission
           "1.0.0",
         ],
       ],
+      "_schemaUrl": undefined,
     },
     "scopeMetrics": [
       {
@@ -443,6 +447,7 @@ exports[`MetricsSubmitter should handles updowncounter negative values correctly
           "1.0.0",
         ],
       ],
+      "_schemaUrl": undefined,
     },
     "scopeMetrics": [
       {
@@ -496,6 +501,7 @@ exports[`MetricsSubmitter should reuses existing instruments for same metric nam
           "1.0.0",
         ],
       ],
+      "_schemaUrl": undefined,
     },
     "scopeMetrics": [
       {

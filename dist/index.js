@@ -28,11 +28,12 @@ import require$$0$9 from 'diagnostics_channel';
 import require$$2$3 from 'child_process';
 import require$$6$1 from 'timers';
 import { metrics, diag, DiagLogLevel, DiagConsoleLogger } from '@opentelemetry/api';
-import { PeriodicExportingMetricReader, MeterProvider } from '@opentelemetry/sdk-metrics';
+import { AggregationType, PeriodicExportingMetricReader, MeterProvider } from '@opentelemetry/sdk-metrics';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_VERSION, ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { ATTR_DEPLOYMENT_ENVIRONMENT_NAME, ATTR_SERVICE_NAMESPACE } from '@opentelemetry/semantic-conventions/incubating';
+import { DEFAULT_AGGREGATION_SELECTOR } from '@opentelemetry/sdk-metrics/build/src/export/AggregationSelector.js';
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -33658,7 +33659,19 @@ async function run() {
             [ATTR_SERVICE_VERSION]: serviceVersion,
             [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: deploymentEnvironment
         });
+        const aggregationPreference = (t) => {
+            if (t === 'HISTOGRAM') {
+                return {
+                    type: AggregationType.EXPONENTIAL_HISTOGRAM,
+                    options: {
+                        recordMinMax: true
+                    }
+                };
+            }
+            return DEFAULT_AGGREGATION_SELECTOR(t);
+        };
         const exporter = new OTLPMetricExporter({
+            aggregationPreference,
             url: otlpEndpoint,
             headers,
             timeoutMillis: DEFAULT_TIMEOUT_MS

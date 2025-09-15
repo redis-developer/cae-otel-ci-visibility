@@ -5,8 +5,10 @@ import { ingestDir } from './junit-parser.js'
 import { generateMetrics, type TMetricsConfig } from './metrics-generator.js'
 import { MetricsSubmitter } from './metrics-submitter.js'
 import {
+  InstrumentType,
   MeterProvider,
-  PeriodicExportingMetricReader
+  PeriodicExportingMetricReader,
+  AggregationType
 } from '@opentelemetry/sdk-metrics'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto'
 import { resourceFromAttributes } from '@opentelemetry/resources'
@@ -28,6 +30,8 @@ import {
   DiagLogger,
   diag
 } from '@opentelemetry/api'
+import { DEFAULT_AGGREGATION_SELECTOR } from '@opentelemetry/sdk-metrics/build/src/export/AggregationSelector.js'
+import { ExponentialHistogramAggregationOption } from '@opentelemetry/sdk-metrics/build/src/view/AggregationOption.js'
 
 class CapturingDiagLogger implements DiagLogger {
   private baseLogger: DiagConsoleLogger
@@ -122,7 +126,19 @@ export async function run(): Promise<void> {
       [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: deploymentEnvironment
     })
 
+    const aggregationPreference = (t: InstrumentType) => {
+      if (t === 'HISTOGRAM') {
+        return {
+          type: AggregationType.EXPONENTIAL_HISTOGRAM,
+          options: {
+            recordMinMax: true
+          }
+        } as ExponentialHistogramAggregationOption
+      }
+      return DEFAULT_AGGREGATION_SELECTOR(t)
+    }
     const exporter = new OTLPMetricExporter({
+      aggregationPreference,
       url: otlpEndpoint,
       headers,
       timeoutMillis: DEFAULT_TIMEOUT_MS
