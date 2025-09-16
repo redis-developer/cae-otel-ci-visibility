@@ -82,7 +82,8 @@ describe('MetricsSubmitter', () => {
     repository: undefined,
     branch: undefined,
     commitSha: undefined,
-    buildId: undefined
+    runId: undefined,
+    jobUUID: undefined
   }
 
   const createDataPoint = (

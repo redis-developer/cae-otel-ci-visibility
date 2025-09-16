@@ -34,6 +34,7 @@ import { DEFAULT_AGGREGATION_SELECTOR } from '@opentelemetry/sdk-metrics/build/s
 import { InstrumentType } from '@opentelemetry/sdk-metrics/build/src/export/MetricData.js'
 
 import { AggregationType, ViewOptions } from '@opentelemetry/sdk-metrics'
+import { randomUUID } from 'crypto'
 class CapturingDiagLogger implements DiagLogger {
   private baseLogger: DiagConsoleLogger
   private capturedOutput: string = ''
@@ -99,7 +100,7 @@ export async function run(): Promise<void> {
 
     const metricsNamespace = core.getInput('metrics-namespace') || 'cae'
 
-    const metricsVersion = core.getInput('metrics-version') || 'v5'
+    const metricsVersion = core.getInput('metrics-version') || 'v6'
 
     const config: TMetricsConfig = {
       serviceName,
@@ -109,7 +110,8 @@ export async function run(): Promise<void> {
       repository: `${github.context.repo.owner}/${github.context.repo.repo}`,
       branch: github.context.ref.replace('refs/heads/', ''),
       commitSha: github.context.sha,
-      buildId: github.context.runId.toString()
+      runId: github.context.runId.toString(),
+      jobUUID: randomUUID()
     }
 
     core.info(`🔧 Configuring OpenTelemetry CI Visibility`)

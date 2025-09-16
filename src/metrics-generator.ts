@@ -8,7 +8,8 @@ export interface TMetricsConfig {
   readonly repository: string | undefined
   readonly branch: string | undefined
   readonly commitSha: string | undefined
-  readonly buildId: string | undefined
+  readonly runId: string | undefined
+  readonly jobUUID: string | undefined
 }
 
 export interface TMetricDataPoint {
@@ -185,7 +186,7 @@ const getBaseAttributes = (
   if (config.branch) attributes['vcs.repository.ref.name'] = config.branch
   if (config.commitSha)
     attributes['vcs.repository.ref.revision'] = config.commitSha
-  if (config.buildId) attributes['ci.build.id'] = config.buildId
+  if (config.runId) attributes['ci.build.id'] = config.runId
 
   return attributes
 }

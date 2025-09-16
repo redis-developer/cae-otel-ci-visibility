@@ -9,7 +9,8 @@ describe('generateMetrics', () => {
     repository: 'test/repo',
     branch: 'main',
     commitSha: 'abc123',
-    buildId: 'build-456'
+    runId: 'build-456',
+    jobUUID: 'job-456'
   }
 
   const createTest = (overrides: Partial<TTest> = {}): TTest => ({
@@ -254,7 +255,8 @@ describe('generateMetrics', () => {
       repository: undefined,
       branch: undefined,
       commitSha: undefined,
-      buildId: undefined
+      runId: undefined,
+      jobUUID: undefined
     })
 
     expect(metrics.length).toBeGreaterThan(0)
