@@ -1,6 +1,6 @@
 # OpenTelemetry CI Visibility Action
 
-Extracts test metrics from JUnit XML files and ships them to OTLP endpoints.
+Extracts test metrics from JUnit XML files and sends them to OTLP endpoints.
 
 ## What it does
 
