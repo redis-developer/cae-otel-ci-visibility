@@ -186,7 +186,13 @@ const getBaseAttributes = (
   if (config.branch) attributes['vcs.repository.ref.name'] = config.branch
   if (config.commitSha)
     attributes['vcs.repository.ref.revision'] = config.commitSha
-  if (config.runId) attributes['ci.build.id'] = config.runId
+  if (config.runId) {
+    attributes['ci.run.id'] = config.runId
+  }
+
+  if (config.jobUUID) {
+    attributes['ci.job.id'] = config.jobUUID
+  }
 
   return attributes
 }

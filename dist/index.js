@@ -33514,8 +33514,12 @@ const getBaseAttributes = (config) => {
         attributes['vcs.repository.ref.name'] = config.branch;
     if (config.commitSha)
         attributes['vcs.repository.ref.revision'] = config.commitSha;
-    if (config.runId)
-        attributes['ci.build.id'] = config.runId;
+    if (config.runId) {
+        attributes['ci.run.id'] = config.runId;
+    }
+    if (config.jobUUID) {
+        attributes['ci.job.id'] = config.jobUUID;
+    }
     return attributes;
 };
 
@@ -33638,7 +33642,7 @@ async function run() {
         const otlpHeaders = coreExports.getInput('otlp-headers') || '';
         const headers = parseOtlpHeaders(otlpHeaders);
         const metricsNamespace = coreExports.getInput('metrics-namespace') || 'cae';
-        const metricsVersion = coreExports.getInput('metrics-version') || 'v6';
+        const metricsVersion = coreExports.getInput('metrics-version') || 'v7';
         const config = {
             serviceName,
             serviceNamespace,

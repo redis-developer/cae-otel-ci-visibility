@@ -100,7 +100,7 @@ export async function run(): Promise<void> {
 
     const metricsNamespace = core.getInput('metrics-namespace') || 'cae'
 
-    const metricsVersion = core.getInput('metrics-version') || 'v6'
+    const metricsVersion = core.getInput('metrics-version') || 'v7'
 
     const config: TMetricsConfig = {
       serviceName,

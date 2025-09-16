@@ -228,11 +228,12 @@ describe('generateMetrics', () => {
         'vcs.repository.name': expect.any(String),
         'vcs.repository.ref.name': expect.any(String),
         'vcs.repository.ref.revision': expect.any(String),
-        'ci.build.id': expect.any(String)
+        'ci.run.id': expect.any(String)
       },
       `
       {
-        "ci.build.id": Any<String>,
+        "ci.job.id": "job-456",
+        "ci.run.id": Any<String>,
         "deployment.environment": Any<String>,
         "service.name": Any<String>,
         "service.version": Any<String>,
