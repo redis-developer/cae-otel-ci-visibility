@@ -33642,7 +33642,7 @@ async function run() {
         const otlpHeaders = coreExports.getInput('otlp-headers') || '';
         const headers = parseOtlpHeaders(otlpHeaders);
         const metricsNamespace = coreExports.getInput('metrics-namespace') || 'cae';
-        const metricsVersion = coreExports.getInput('metrics-version') || 'v8';
+        const metricsVersion = coreExports.getInput('metrics-version') || 'v9';
         const config = {
             serviceName,
             serviceNamespace,
@@ -33688,7 +33688,17 @@ async function run() {
                 exportIntervalMillis: DEFAULT_EXPORT_INTERVAL_MS
             })
         ];
+        const view = {
+            instrumentType: InstrumentType.HISTOGRAM,
+            aggregation: {
+                type: AggregationType.EXPONENTIAL_HISTOGRAM,
+                options: {
+                    recordMinMax: true
+                }
+            }
+        };
         const meterProvider = new MeterProvider({
+            views: [view],
             resource,
             readers
         });

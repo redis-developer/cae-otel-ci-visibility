@@ -28,7 +28,8 @@ import {
 import {
   AggregationSelector,
   MeterProvider,
-  PeriodicExportingMetricReader
+  PeriodicExportingMetricReader,
+  ViewOptions
 } from '@opentelemetry/sdk-metrics'
 import { DEFAULT_AGGREGATION_SELECTOR } from '@opentelemetry/sdk-metrics/build/src/export/AggregationSelector.js'
 import { InstrumentType } from '@opentelemetry/sdk-metrics/build/src/export/MetricData.js'
@@ -100,7 +101,7 @@ export async function run(): Promise<void> {
 
     const metricsNamespace = core.getInput('metrics-namespace') || 'cae'
 
-    const metricsVersion = core.getInput('metrics-version') || 'v8'
+    const metricsVersion = core.getInput('metrics-version') || 'v9'
 
     const config: TMetricsConfig = {
       serviceName,
@@ -155,7 +156,17 @@ export async function run(): Promise<void> {
       })
     ]
 
+    const view: ViewOptions = {
+      instrumentType: InstrumentType.HISTOGRAM,
+      aggregation: {
+        type: AggregationType.EXPONENTIAL_HISTOGRAM,
+        options: {
+          recordMinMax: true
+        }
+      }
+    }
     const meterProvider = new MeterProvider({
+      views: [view],
       resource,
       readers
     })
