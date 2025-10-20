@@ -147,7 +147,6 @@ describe('main.ts', () => {
     })
 
     expect(mockOTLPExporter.OTLPMetricExporter).toHaveBeenCalledWith({
-      aggregationPreference: expect.any(Function),
       url: 'http://localhost:4318/v1/metrics',
       headers: {
         'api-key': 'secret123',

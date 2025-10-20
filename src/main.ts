@@ -26,15 +26,10 @@ import {
 } from '@opentelemetry/api'
 
 import {
-  AggregationSelector,
   MeterProvider,
-  PeriodicExportingMetricReader,
-  ViewOptions
+  PeriodicExportingMetricReader
 } from '@opentelemetry/sdk-metrics'
-import { DEFAULT_AGGREGATION_SELECTOR } from '@opentelemetry/sdk-metrics/build/src/export/AggregationSelector.js'
-import { InstrumentType } from '@opentelemetry/sdk-metrics/build/src/export/MetricData.js'
 
-import { AggregationType } from '@opentelemetry/sdk-metrics'
 import { randomUUID } from 'crypto'
 class CapturingDiagLogger implements DiagLogger {
   private baseLogger: DiagConsoleLogger
@@ -101,7 +96,7 @@ export async function run(): Promise<void> {
 
     const metricsNamespace = core.getInput('metrics-namespace') || 'cae'
 
-    const metricsVersion = core.getInput('metrics-version') || 'v9'
+    const metricsVersion = core.getInput('metrics-version') || 'v10'
 
     const config: TMetricsConfig = {
       serviceName,
@@ -130,20 +125,7 @@ export async function run(): Promise<void> {
       [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: deploymentEnvironment
     })
 
-    const aggregationPreference: AggregationSelector = (t: InstrumentType) => {
-      if (t === InstrumentType.HISTOGRAM) {
-        return {
-          type: AggregationType.EXPONENTIAL_HISTOGRAM,
-          options: {
-            recordMinMax: true
-          }
-        }
-      }
-      return DEFAULT_AGGREGATION_SELECTOR(t)
-    }
-
     const exporter = new OTLPMetricExporter({
-      aggregationPreference,
       url: otlpEndpoint,
       headers,
       timeoutMillis: DEFAULT_TIMEOUT_MS
@@ -156,17 +138,7 @@ export async function run(): Promise<void> {
       })
     ]
 
-    const view: ViewOptions = {
-      instrumentType: InstrumentType.HISTOGRAM,
-      aggregation: {
-        type: AggregationType.EXPONENTIAL_HISTOGRAM,
-        options: {
-          recordMinMax: true
-        }
-      }
-    }
     const meterProvider = new MeterProvider({
-      views: [view],
       resource,
       readers
     })

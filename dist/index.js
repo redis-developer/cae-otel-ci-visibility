@@ -32,9 +32,7 @@ import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_VERSION, ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { ATTR_DEPLOYMENT_ENVIRONMENT_NAME, ATTR_SERVICE_NAMESPACE } from '@opentelemetry/semantic-conventions/incubating';
-import { AggregationType, PeriodicExportingMetricReader, MeterProvider } from '@opentelemetry/sdk-metrics';
-import { DEFAULT_AGGREGATION_SELECTOR } from '@opentelemetry/sdk-metrics/build/src/export/AggregationSelector.js';
-import { InstrumentType } from '@opentelemetry/sdk-metrics/build/src/export/MetricData.js';
+import { PeriodicExportingMetricReader, MeterProvider } from '@opentelemetry/sdk-metrics';
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -33642,7 +33640,7 @@ async function run() {
         const otlpHeaders = coreExports.getInput('otlp-headers') || '';
         const headers = parseOtlpHeaders(otlpHeaders);
         const metricsNamespace = coreExports.getInput('metrics-namespace') || 'cae';
-        const metricsVersion = coreExports.getInput('metrics-version') || 'v9';
+        const metricsVersion = coreExports.getInput('metrics-version') || 'v10';
         const config = {
             serviceName,
             serviceNamespace,
@@ -33665,19 +33663,7 @@ async function run() {
             [ATTR_SERVICE_VERSION]: serviceVersion,
             [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: deploymentEnvironment
         });
-        const aggregationPreference = (t) => {
-            if (t === InstrumentType.HISTOGRAM) {
-                return {
-                    type: AggregationType.EXPONENTIAL_HISTOGRAM,
-                    options: {
-                        recordMinMax: true
-                    }
-                };
-            }
-            return DEFAULT_AGGREGATION_SELECTOR(t);
-        };
         const exporter = new OTLPMetricExporter({
-            aggregationPreference,
             url: otlpEndpoint,
             headers,
             timeoutMillis: DEFAULT_TIMEOUT_MS
@@ -33688,17 +33674,7 @@ async function run() {
                 exportIntervalMillis: DEFAULT_EXPORT_INTERVAL_MS
             })
         ];
-        const view = {
-            instrumentType: InstrumentType.HISTOGRAM,
-            aggregation: {
-                type: AggregationType.EXPONENTIAL_HISTOGRAM,
-                options: {
-                    recordMinMax: true
-                }
-            }
-        };
         const meterProvider = new MeterProvider({
-            views: [view],
             resource,
             readers
         });
