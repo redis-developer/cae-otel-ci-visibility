@@ -152,7 +152,8 @@ describe('main.ts', () => {
         'api-key': 'secret123',
         'x-tenant': 'test'
       },
-      timeoutMillis: 30000
+      timeoutMillis: 30000,
+      temporalityPreference: 1 // AggregationTemporalityPreference.CUMULATIVE
     })
 
     expect(mockCore.info).toHaveBeenCalledWith(

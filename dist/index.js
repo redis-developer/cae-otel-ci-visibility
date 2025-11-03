@@ -29,6 +29,7 @@ import require$$2$3 from 'child_process';
 import require$$6$1 from 'timers';
 import { metrics, diag, DiagLogLevel, DiagConsoleLogger } from '@opentelemetry/api';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto';
+import { AggregationTemporalityPreference } from '@opentelemetry/exporter-metrics-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_VERSION, ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { ATTR_DEPLOYMENT_ENVIRONMENT_NAME, ATTR_SERVICE_NAMESPACE } from '@opentelemetry/semantic-conventions/incubating';
@@ -33640,7 +33641,7 @@ async function run() {
         const otlpHeaders = coreExports.getInput('otlp-headers') || '';
         const headers = parseOtlpHeaders(otlpHeaders);
         const metricsNamespace = coreExports.getInput('metrics-namespace') || 'cae';
-        const metricsVersion = coreExports.getInput('metrics-version') || 'v10';
+        const metricsVersion = coreExports.getInput('metrics-version') || 'v11';
         const config = {
             serviceName,
             serviceNamespace,
@@ -33666,7 +33667,8 @@ async function run() {
         const exporter = new OTLPMetricExporter({
             url: otlpEndpoint,
             headers,
-            timeoutMillis: DEFAULT_TIMEOUT_MS
+            timeoutMillis: DEFAULT_TIMEOUT_MS,
+            temporalityPreference: AggregationTemporalityPreference.CUMULATIVE
         });
         const readers = [
             new PeriodicExportingMetricReader({

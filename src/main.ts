@@ -5,6 +5,7 @@ import { ingestDir } from './junit-parser.js'
 import { generateMetrics, type TMetricsConfig } from './metrics-generator.js'
 import { MetricsSubmitter } from './metrics-submitter.js'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto'
+import { AggregationTemporalityPreference } from '@opentelemetry/exporter-metrics-otlp-http'
 import { resourceFromAttributes } from '@opentelemetry/resources'
 import {
   ATTR_SERVICE_NAME,
@@ -96,7 +97,7 @@ export async function run(): Promise<void> {
 
     const metricsNamespace = core.getInput('metrics-namespace') || 'cae'
 
-    const metricsVersion = core.getInput('metrics-version') || 'v10'
+    const metricsVersion = core.getInput('metrics-version') || 'v11'
 
     const config: TMetricsConfig = {
       serviceName,
@@ -128,7 +129,8 @@ export async function run(): Promise<void> {
     const exporter = new OTLPMetricExporter({
       url: otlpEndpoint,
       headers,
-      timeoutMillis: DEFAULT_TIMEOUT_MS
+      timeoutMillis: DEFAULT_TIMEOUT_MS,
+      temporalityPreference: AggregationTemporalityPreference.CUMULATIVE
     })
 
     const readers = [
