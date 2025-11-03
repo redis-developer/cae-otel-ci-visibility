@@ -71,30 +71,14 @@ describe('generateMetrics', () => {
     const report = createReport([createSuite()])
     const metrics = generateMetrics(report, config)
 
-    expect(metrics).toHaveLength(5)
+    expect(metrics).toHaveLength(1)
 
     expect(metrics.map((m) => ({ name: m.metricName, type: m.metricType })))
       .toMatchInlineSnapshot(`
       [
         {
-          "name": "test.suite.duration",
-          "type": "histogram",
-        },
-        {
-          "name": "test.suite.cumulative_duration",
-          "type": "histogram",
-        },
-        {
-          "name": "test.suite.total",
-          "type": "updowncounter",
-        },
-        {
-          "name": "test.duration",
-          "type": "histogram",
-        },
-        {
-          "name": "test.status",
-          "type": "counter",
+          "name": "test_duration_seconds",
+          "type": "gauge",
         },
       ]
     `)
@@ -116,17 +100,18 @@ describe('generateMetrics', () => {
     })
   })
 
-  it('generates histogram buckets for duration metrics', () => {
+  it('generates gauge metrics for test duration', () => {
     const report = createReport([createSuite()])
     const metrics = generateMetrics(report, config)
 
-    const testDuration = metrics.find((m) => m.metricName === 'test.duration')
-    const suiteDuration = metrics.find(
-      (m) => m.metricName === 'test.suite.duration'
+    const testDuration = metrics.find(
+      (m) => m.metricName === 'test_duration_seconds'
     )
 
     expect(testDuration).toBeDefined()
-    expect(suiteDuration).toBeDefined()
+    expect(testDuration?.metricType).toBe('gauge')
+    expect(testDuration?.value).toBe(1.5)
+    expect(testDuration?.unit).toBe('s')
   })
 
   it('generates metrics for all test statuses', () => {
@@ -172,19 +157,18 @@ describe('generateMetrics', () => {
     const report = createReport([suite])
     const metrics = generateMetrics(report, config)
 
-    const suiteTotals = metrics.filter(
-      (m) => m.metricName === 'test.suite.total'
-    )
-    expect(suiteTotals).toHaveLength(4)
-    expect(suiteTotals.map((m) => m.attributes['test.status']).sort()).toEqual([
+    expect(metrics).toHaveLength(4)
+    expect(metrics.map((m) => m.attributes['test.status']).sort()).toEqual([
       'error',
       'failed',
       'passed',
       'skipped'
     ])
 
-    expect(metrics.some((m) => m.metricName === 'test.failure')).toBe(true)
-    expect(metrics.some((m) => m.metricName === 'test.error')).toBe(true)
+    expect(metrics.every((m) => m.metricName === 'test_duration_seconds')).toBe(
+      true
+    )
+    expect(metrics.every((m) => m.metricType === 'gauge')).toBe(true)
   })
 
   it('handles nested suites recursively', () => {
@@ -207,12 +191,9 @@ describe('generateMetrics', () => {
     const report = createReport([parentSuite])
     const metrics = generateMetrics(report, config)
 
-    const suiteNames = metrics
-      .filter((m) => m.metricName === 'test.suite.duration')
-      .map((m) => m.attributes['test.suite.name'])
+    expect(metrics).toHaveLength(1)
 
-    expect(suiteNames).toContain('ParentSuite')
-    expect(suiteNames).toContain('NestedSuite')
+    expect(metrics[0]!.attributes['test.suite.name']).toBe('NestedSuite')
   })
 
   it('uses OpenTelemetry semantic conventions for attribute names', () => {
@@ -237,7 +218,10 @@ describe('generateMetrics', () => {
         "deployment.environment": Any<String>,
         "service.name": Any<String>,
         "service.version": Any<String>,
+        "test.class.name": "com.example.Test",
         "test.framework": "junit",
+        "test.name": "test1",
+        "test.status": "passed",
         "test.suite.name": "TestSuite",
         "vcs.repository.name": Any<String>,
         "vcs.repository.ref.name": Any<String>,
@@ -282,14 +266,12 @@ describe('generateMetrics', () => {
     const report = createReport([suiteWithDuration])
     const metrics = generateMetrics(report, config)
 
-    const testDuration = metrics.find((m) => m.metricName === 'test.duration')
-    const suiteDuration = metrics.find(
-      (m) => m.metricName === 'test.suite.duration'
+    const testDuration = metrics.find(
+      (m) => m.metricName === 'test_duration_seconds'
     )
 
     expect(testDuration?.value).toBe(2.5)
     expect(testDuration?.unit).toBe('s')
-    expect(suiteDuration?.value).toBe(2.5)
-    expect(suiteDuration?.unit).toBe('s')
+    expect(testDuration?.metricType).toBe('gauge')
   })
 })

@@ -33392,43 +33392,6 @@ const generateSuiteMetrics = (suite, baseAttributes) => {
         'test.suite.name': suite.name,
         'test.framework': 'junit'
     };
-    metrics.push({
-        metricName: 'test.suite.duration',
-        metricType: 'histogram',
-        value: suite.totals.time,
-        attributes: suiteAttributes,
-        description: 'Test suite execution time (from XML time attribute)',
-        unit: 's'
-    });
-    metrics.push({
-        metricName: 'test.suite.cumulative_duration',
-        metricType: 'histogram',
-        value: suite.totals.cumulativeTime,
-        attributes: suiteAttributes,
-        description: 'Test suite cumulative time (calculated from child elements)',
-        unit: 's'
-    });
-    const statusCounts = [
-        { status: 'passed', count: suite.totals.passed },
-        { status: 'failed', count: suite.totals.failed },
-        { status: 'error', count: suite.totals.error },
-        { status: 'skipped', count: suite.totals.skipped }
-    ];
-    for (const { status, count } of statusCounts) {
-        if (count > 0) {
-            metrics.push({
-                metricName: 'test.suite.total',
-                metricType: 'updowncounter',
-                value: count,
-                attributes: {
-                    ...suiteAttributes,
-                    'test.status': status
-                },
-                description: 'Current test count per suite by status',
-                unit: '{test}'
-            });
-        }
-    }
     for (const testCase of suite.tests) {
         metrics.push(...generateTestCaseMetrics(testCase, suiteAttributes));
     }
@@ -33447,54 +33410,15 @@ const generateTestCaseMetrics = (testCase, suiteAttributes) => {
         'test.class.name': testCase.classname,
         'test.status': testCase.result.status
     };
+    // Only metric: test duration as a gauge for performance regression detection
     metrics.push({
-        metricName: 'test.duration',
-        metricType: 'histogram',
+        metricName: 'test_duration_seconds',
+        metricType: 'gauge',
         value: testCase.time,
         attributes: testAttributes,
-        description: 'Individual test execution time',
+        description: 'Individual test execution duration for performance regression detection',
         unit: 's'
     });
-    metrics.push({
-        metricName: 'test.status',
-        metricType: 'counter',
-        value: 1,
-        attributes: testAttributes,
-        description: 'Test execution count by status',
-        unit: '{test}'
-    });
-    switch (testCase.result.status) {
-        case 'failed':
-            if (testCase.result.type) {
-                metrics.push({
-                    metricName: 'test.failure',
-                    metricType: 'counter',
-                    value: 1,
-                    attributes: {
-                        ...testAttributes,
-                        'failure.type': testCase.result.type
-                    },
-                    description: 'Test failures by type',
-                    unit: '{failure}'
-                });
-            }
-            break;
-        case 'error':
-            if (testCase.result.type) {
-                metrics.push({
-                    metricName: 'test.error',
-                    metricType: 'counter',
-                    value: 1,
-                    attributes: {
-                        ...testAttributes,
-                        'error.type': testCase.result.type
-                    },
-                    description: 'Test errors by type',
-                    unit: '{error}'
-                });
-            }
-            break;
-    }
     return metrics;
 };
 const getBaseAttributes = (config) => {
@@ -33527,6 +33451,7 @@ class MetricsSubmitter {
     histograms = new Map();
     counters = new Map();
     upDownCounters = new Map();
+    gauges = new Map();
     namespace;
     version;
     constructor(config, meterProvider, namespace, version) {
@@ -33549,6 +33474,9 @@ class MetricsSubmitter {
                     break;
                 case 'updowncounter':
                     this.updateUpDownCounter(dataPoint);
+                    break;
+                case 'gauge':
+                    this.recordGauge(dataPoint);
                     break;
             }
         }
@@ -33587,6 +33515,13 @@ class MetricsSubmitter {
             unit: dataPoint.unit
         }));
         upDownCounter.add(dataPoint.value, dataPoint.attributes);
+    }
+    recordGauge(dataPoint) {
+        const gauge = this.getOrCreateMetric(dataPoint.metricName, this.gauges, () => this.meter.createGauge(`${this.namespace}.${this.version}.${dataPoint.metricName}`, {
+            description: dataPoint.description,
+            unit: dataPoint.unit
+        }));
+        gauge.record(dataPoint.value, dataPoint.attributes);
     }
 }
 
@@ -33641,7 +33576,7 @@ async function run() {
         const otlpHeaders = coreExports.getInput('otlp-headers') || '';
         const headers = parseOtlpHeaders(otlpHeaders);
         const metricsNamespace = coreExports.getInput('metrics-namespace') || 'cae';
-        const metricsVersion = coreExports.getInput('metrics-version') || 'v11';
+        const metricsVersion = coreExports.getInput('metrics-version') || 'v12';
         const config = {
             serviceName,
             serviceNamespace,

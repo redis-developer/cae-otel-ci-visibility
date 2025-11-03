@@ -97,7 +97,7 @@ export async function run(): Promise<void> {
 
     const metricsNamespace = core.getInput('metrics-namespace') || 'cae'
 
-    const metricsVersion = core.getInput('metrics-version') || 'v11'
+    const metricsVersion = core.getInput('metrics-version') || 'v12'
 
     const config: TMetricsConfig = {
       serviceName,

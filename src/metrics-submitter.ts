@@ -3,18 +3,20 @@ import {
   type MetricOptions,
   type Histogram,
   type Counter,
-  type UpDownCounter
+  type UpDownCounter,
+  type Gauge
 } from '@opentelemetry/api'
 import type { MeterProvider } from '@opentelemetry/sdk-metrics'
 import type { TMetricDataPoint, TMetricsConfig } from './metrics-generator.js'
 
-type TMetric = Histogram | Counter | UpDownCounter
+type TMetric = Histogram | Counter | UpDownCounter | Gauge
 
 export class MetricsSubmitter {
   private readonly meter
   private readonly histograms = new Map<string, Histogram>()
   private readonly counters = new Map<string, Counter>()
   private readonly upDownCounters = new Map<string, UpDownCounter>()
+  private readonly gauges = new Map<string, Gauge>()
   private readonly namespace
   private readonly version
 
@@ -45,6 +47,9 @@ export class MetricsSubmitter {
           break
         case 'updowncounter':
           this.updateUpDownCounter(dataPoint)
+          break
+        case 'gauge':
+          this.recordGauge(dataPoint)
           break
       }
     }
@@ -121,5 +126,22 @@ export class MetricsSubmitter {
     )
 
     upDownCounter.add(dataPoint.value, dataPoint.attributes)
+  }
+
+  private recordGauge(dataPoint: TMetricDataPoint): void {
+    const gauge = this.getOrCreateMetric(
+      dataPoint.metricName,
+      this.gauges,
+      () =>
+        this.meter.createGauge(
+          `${this.namespace}.${this.version}.${dataPoint.metricName}`,
+          {
+            description: dataPoint.description,
+            unit: dataPoint.unit
+          }
+        )
+    )
+
+    gauge.record(dataPoint.value, dataPoint.attributes)
   }
 }
