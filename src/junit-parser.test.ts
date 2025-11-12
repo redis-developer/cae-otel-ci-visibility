@@ -6,7 +6,7 @@ import {
 } from './junit-parser.js'
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'fs'
 import { join } from 'path'
-
+import { setTimeout } from 'timers/promises'
 const readFixture = (filename: string): string => {
   return readFileSync(`src/__test-fixtures__/${filename}`, {
     encoding: 'utf-8'
@@ -600,7 +600,7 @@ describe('JUnit XML File System Ingestion', () => {
     }
   })
 
-  test('should combine totals correctly across multiple files', () => {
+  test('should combine totals correctly across multiple files', async () => {
     try {
       mkdirSync(testDir, { recursive: true })
 
@@ -620,6 +620,7 @@ describe('JUnit XML File System Ingestion', () => {
         </testsuite>
       </testsuites>`
 
+      await setTimeout(4000)
       writeFileSync(join(testDir, 'passing.xml'), xml1)
       writeFileSync(join(testDir, 'failing.xml'), xml2)
 
