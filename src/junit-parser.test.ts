@@ -600,7 +600,7 @@ describe('JUnit XML File System Ingestion', () => {
     }
   })
 
-  test('should combine totals correctly across multiple files', async () => {
+  test('should combine totals correctly across multiple files', () => {
     try {
       mkdirSync(testDir, { recursive: true })
 
@@ -620,7 +620,6 @@ describe('JUnit XML File System Ingestion', () => {
         </testsuite>
       </testsuites>`
 
-      await setTimeout(4000)
       writeFileSync(join(testDir, 'passing.xml'), xml1)
       writeFileSync(join(testDir, 'failing.xml'), xml2)
 
@@ -635,7 +634,7 @@ describe('JUnit XML File System Ingestion', () => {
     }
   })
 
-  test('should preserve time discrepancies between XML time and cumulative time (jest-junit example)', () => {
+  test('should preserve time discrepancies between XML time and cumulative time (jest-junit example)', async () => {
     const result = expectSuccess(
       ingestFile('src/__test-fixtures__/jest-junit.xml')
     )
@@ -670,6 +669,8 @@ describe('JUnit XML File System Ingestion', () => {
     expect(genSuite).toBeDefined()
     expect(genSuite!.totals.time).toBe(0.036)
     expect(genSuite!.totals.cumulativeTime).toBe(0.004)
+
+    await setTimeout(4000)
   })
 
   test('should require time attribute on testsuites element', () => {
