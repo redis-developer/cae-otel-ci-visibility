@@ -6,7 +6,6 @@ import {
 } from './junit-parser.js'
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'fs'
 import { join } from 'path'
-import { setTimeout } from 'timers/promises'
 const readFixture = (filename: string): string => {
   return readFileSync(`src/__test-fixtures__/${filename}`, {
     encoding: 'utf-8'
@@ -21,10 +20,9 @@ const expectSuccess = <T>(result: TResult<T>): T => {
 }
 
 describe('JUnit XML Parser', () => {
-  test('should parse complete junit xml', async () => {
+  test('should parse complete junit xml', () => {
     const xml = readFixture('junit-complete.xml')
     const result = expectSuccess(parseJUnitXML(xml))
-    await setTimeout(4000)
     expect(result).toMatchInlineSnapshot(`
       {
         "testsuites": [
