@@ -21,9 +21,10 @@ const expectSuccess = <T>(result: TResult<T>): T => {
 }
 
 describe('JUnit XML Parser', () => {
-  test('should parse complete junit xml', () => {
+  test('should parse complete junit xml', async () => {
     const xml = readFixture('junit-complete.xml')
     const result = expectSuccess(parseJUnitXML(xml))
+    await setTimeout(4000)
     expect(result).toMatchInlineSnapshot(`
       {
         "testsuites": [
@@ -669,8 +670,6 @@ describe('JUnit XML File System Ingestion', () => {
     expect(genSuite).toBeDefined()
     expect(genSuite!.totals.time).toBe(0.036)
     expect(genSuite!.totals.cumulativeTime).toBe(0.004)
-
-    await setTimeout(4000)
   })
 
   test('should require time attribute on testsuites element', () => {
