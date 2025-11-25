@@ -1,6 +1,6 @@
 import { generateMetrics, type TMetricsConfig } from './metrics-generator.js'
 import type { TJUnitReport, TSuite, TTest } from './junit-parser.js'
-
+import { setTimeout } from 'timers/promises'
 describe('generateMetrics', () => {
   const config: TMetricsConfig = {
     serviceName: 'test-service',
@@ -67,10 +67,10 @@ describe('generateMetrics', () => {
     )
   })
 
-  it('generates correct metrics structure for simple passed test', () => {
+  it('generates correct metrics structure for simple passed test', async () => {
     const report = createReport([createSuite()])
     const metrics = generateMetrics(report, config)
-
+    await setTimeout(4000, () => {})
     expect(metrics).toHaveLength(1)
 
     expect(metrics.map((m) => ({ name: m.metricName, type: m.metricType })))
