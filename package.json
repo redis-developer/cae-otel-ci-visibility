@@ -1,7 +1,7 @@
 {
   "name": "otel-ci-visibility-action",
   "description": "GitHub Action to collect OpenTelemetry metrics for CI visibility",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Borislav Iv. Redis Inc.",
   "type": "module",
   "private": true,
