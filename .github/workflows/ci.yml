@@ -50,7 +50,7 @@ jobs:
 
       - name: Self Report Metrics
         id: self-report-metrics
-        uses: ./
+        uses: redis-developer/cae-otel-ci-visibility@v1.0.1
         with:
           junit-xml-folder: 'test-results'
           service-name: 'cae-otel-ci-visibility'
