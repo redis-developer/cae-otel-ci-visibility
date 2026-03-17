@@ -12,7 +12,7 @@ Extracts test metrics from JUnit XML files and sends them to OTLP endpoints.
 ## Usage
 
 ```yaml
-- uses: redis-developer/cae-otel-ci-visibility@v1
+- uses: redis-developer/cae-otel-ci-visibility@v1.0.2
   with:
     junit-xml-folder: './test-results'
     service-name: 'my-service'
