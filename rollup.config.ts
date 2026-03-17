@@ -12,7 +12,6 @@ const config = {
     format: 'es',
     sourcemap: true
   },
-  external: [/^@opentelemetry\//],
   plugins: [typescript(), nodeResolve({ preferBuiltins: true }), commonjs()]
 }
 
