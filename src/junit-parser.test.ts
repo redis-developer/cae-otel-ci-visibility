@@ -191,9 +191,6 @@ describe('JUnit XML Parser', () => {
     const largeContent = 'x'.repeat(11 * 1024 * 1024)
     const xml = `<testsuite name="${largeContent}"><testcase name="test1" classname="TestClass" time="0.5"/></testsuite>`
 
-    //test perf regression
-    await setTimeout(2000)
-
     const result = parseJUnitXML(xml)
     expect(result.success).toBe(false)
     expect(result).toMatchObject({
@@ -202,7 +199,10 @@ describe('JUnit XML Parser', () => {
     })
   })
 
-  test('should reject non-string input', () => {
+  test('should reject non-string input', async () => {
+    //test perf regression
+    await setTimeout(2000)
+
     const nullResult = parseJUnitXML(null as unknown as string)
     expect(nullResult.success).toBe(false)
     expect(nullResult).toMatchObject({
