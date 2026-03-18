@@ -1,10 +1,19 @@
-import { createHash } from 'crypto'
+import { createHash, randomUUID } from 'crypto'
 import type { TJUnitReport, TSuite, TTest } from './junit-parser.js'
 
 export interface TMetricsConfig {
   readonly repository: string | undefined
   readonly branch: string | undefined
   readonly commitSha: string | undefined
+  readonly runId: string
+}
+
+/**
+ * Generates a unique run ID for this CI run.
+ * All tests in the same run share this ID.
+ */
+export const generateRunId = (): string => {
+  return randomUUID()
 }
 
 export interface TMetricDataPoint {
@@ -119,7 +128,9 @@ const generateTestCaseMetrics = (
 const getBaseAttributes = (
   config: TMetricsConfig
 ): Readonly<Record<string, string>> => {
-  const attributes: Record<string, string> = {}
+  const attributes: Record<string, string> = {
+    'ci.run.id': config.runId
+  }
 
   if (config.repository) {
     attributes['vcs.repository.name'] = config.repository

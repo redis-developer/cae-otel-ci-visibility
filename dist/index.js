@@ -1,5 +1,5 @@
 import require$$0 from 'os';
-import require$$0$1, { createHash } from 'crypto';
+import require$$0$1, { randomUUID, createHash } from 'crypto';
 import require$$1, { statSync, readdirSync, readFileSync } from 'fs';
 import require$$1$5, { extname, join } from 'path';
 import require$$2$1 from 'http';
@@ -33372,6 +33372,13 @@ const ingestDir = (dirPath) => {
 };
 
 /**
+ * Generates a unique run ID for this CI run.
+ * All tests in the same run share this ID.
+ */
+const generateRunId = () => {
+    return randomUUID();
+};
+/**
  * Generates a test ID with hash suffix for uniqueness.
  *
  * Format: {start abbreviated}...{end of identifier}_{hash}
@@ -33437,7 +33444,9 @@ const generateTestCaseMetrics = (testCase, suiteName, baseAttributes) => {
     return metrics;
 };
 const getBaseAttributes = (config) => {
-    const attributes = {};
+    const attributes = {
+        'ci.run.id': config.runId
+    };
     if (config.repository) {
         attributes['vcs.repository.name'] = config.repository;
     }
@@ -57071,15 +57080,18 @@ async function run() {
         const repository = `${githubExports.context.repo.owner}/${githubExports.context.repo.repo}`;
         const branch = githubExports.context.ref.replace('refs/heads/', '');
         const commitSha = githubExports.context.sha;
+        const runId = generateRunId();
         const config = {
             repository,
             branch,
-            commitSha
+            commitSha,
+            runId
         };
         coreExports.info(`🔧 Configuring OpenTelemetry CI Visibility`);
         coreExports.info(`   Repository: ${repository}`);
         coreExports.info(`   Branch: ${branch}`);
         coreExports.info(`   Commit: ${commitSha}`);
+        coreExports.info(`   Run ID: ${runId}`);
         coreExports.info(`   JUnit XML Folder: ${junitXmlFolder}`);
         coreExports.info(`   OTLP Endpoint: ${otlpEndpoint}`);
         const resource = resourceFromAttributes({

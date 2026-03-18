@@ -77,7 +77,8 @@ describe('generateMetrics', () => {
   const config: TMetricsConfig = {
     repository: 'owner/repo',
     branch: 'main',
-    commitSha: 'abc123def456'
+    commitSha: 'abc123def456',
+    runId: 'test-run-id-123'
   }
 
   const createTest = (overrides: Partial<TTest> = {}): TTest => ({
@@ -143,13 +144,14 @@ describe('generateMetrics', () => {
     expect(metrics[0]!.metricType).toBe('gauge')
   })
 
-  it('generates only 4 labels (test.id + 3 base attributes)', () => {
+  it('generates only 5 labels (test.id + ci.run.id + 3 vcs attributes)', () => {
     const report = createReport([createSuite()])
     const metrics = generateMetrics(report, config)
 
     const attributes = metrics[0]!.attributes
-    expect(Object.keys(attributes)).toHaveLength(4)
+    expect(Object.keys(attributes)).toHaveLength(5)
     expect(attributes).toHaveProperty(['test.id'])
+    expect(attributes).toHaveProperty(['ci.run.id'])
     expect(attributes).toHaveProperty(['vcs.repository.name'])
     expect(attributes).toHaveProperty(['vcs.repository.ref.name'])
     expect(attributes).toHaveProperty(['vcs.repository.ref.revision'])
@@ -166,7 +168,6 @@ describe('generateMetrics', () => {
     expect(attributes).not.toHaveProperty(['service.namespace'])
     expect(attributes).not.toHaveProperty(['service.version'])
     expect(attributes).not.toHaveProperty(['deployment.environment'])
-    expect(attributes).not.toHaveProperty(['ci.run.id'])
     expect(attributes).not.toHaveProperty(['ci.job.id'])
     expect(attributes).not.toHaveProperty(['test.name'])
     expect(attributes).not.toHaveProperty(['test.class.name'])
@@ -271,12 +272,14 @@ describe('generateMetrics', () => {
     const metrics = generateMetrics(report, {
       repository: undefined,
       branch: undefined,
-      commitSha: undefined
+      commitSha: undefined,
+      runId: 'test-run-id'
     })
 
     expect(metrics.length).toBeGreaterThan(0)
-    // Should still have test.id
+    // Should still have test.id and ci.run.id
     expect(metrics[0]!.attributes['test.id']).toBeDefined()
+    expect(metrics[0]!.attributes['ci.run.id']).toBe('test-run-id')
     // Should not have undefined base attributes
     expect(metrics[0]!.attributes['vcs.repository.name']).toBeUndefined()
   })
@@ -316,6 +319,7 @@ describe('generateMetrics', () => {
 
     expect(attributes).toMatchInlineSnapshot(`
       {
+        "ci.run.id": "test-run-id-123",
         "test.id": "TestS...m.example.TestClass.testMethod___c76648",
         "vcs.repository.name": "owner/repo",
         "vcs.repository.ref.name": "main",
@@ -330,13 +334,15 @@ describe('generateMetrics', () => {
     const config1: TMetricsConfig = {
       repository: 'owner/repo',
       branch: 'main',
-      commitSha: 'commit1'
+      commitSha: 'commit1',
+      runId: 'run-1'
     }
 
     const config2: TMetricsConfig = {
       repository: 'owner/repo',
       branch: 'feature',
-      commitSha: 'commit2'
+      commitSha: 'commit2',
+      runId: 'run-2'
     }
 
     const metrics1 = generateMetrics(report, config1)

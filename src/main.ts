@@ -2,7 +2,11 @@ import * as core from '@actions/core'
 
 import * as github from '@actions/github'
 import { ingestDir } from './junit-parser.js'
-import { generateMetrics, type TMetricsConfig } from './metrics-generator.js'
+import {
+  generateMetrics,
+  generateRunId,
+  type TMetricsConfig
+} from './metrics-generator.js'
 import { MetricsSubmitter } from './metrics-submitter.js'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto'
 import { AggregationTemporalityPreference } from '@opentelemetry/exporter-metrics-otlp-http'
@@ -84,17 +88,20 @@ export async function run(): Promise<void> {
     const repository = `${github.context.repo.owner}/${github.context.repo.repo}`
     const branch = github.context.ref.replace('refs/heads/', '')
     const commitSha = github.context.sha
+    const runId = generateRunId()
 
     const config: TMetricsConfig = {
       repository,
       branch,
-      commitSha
+      commitSha,
+      runId
     }
 
     core.info(`🔧 Configuring OpenTelemetry CI Visibility`)
     core.info(`   Repository: ${repository}`)
     core.info(`   Branch: ${branch}`)
     core.info(`   Commit: ${commitSha}`)
+    core.info(`   Run ID: ${runId}`)
     core.info(`   JUnit XML Folder: ${junitXmlFolder}`)
     core.info(`   OTLP Endpoint: ${otlpEndpoint}`)
 
