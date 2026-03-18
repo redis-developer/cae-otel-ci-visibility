@@ -11,7 +11,7 @@ const readFixture = (filename: string): string => {
     encoding: 'utf-8'
   })
 }
-import { setTimeout } from 'timers/promises'
+
 const expectSuccess = <T>(result: TResult<T>): T => {
   if (!result.success) {
     throw new Error(`Expected success but got error: ${result.error}`)
