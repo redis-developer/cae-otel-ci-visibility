@@ -46,10 +46,7 @@ const mockResources = {
 }
 
 const mockSemanticConventions = {
-  ATTR_SERVICE_NAME: 'service.name',
-  ATTR_SERVICE_VERSION: 'service.version',
-  SEMRESATTRS_SERVICE_NAMESPACE: 'service.namespace',
-  SEMRESATTRS_DEPLOYMENT_ENVIRONMENT: 'deployment.environment'
+  ATTR_SERVICE_NAME: 'service.name'
 }
 
 const mockMetricsSubmitter = {
@@ -103,20 +100,10 @@ describe('main.ts', () => {
         switch (name) {
           case 'junit-xml-folder':
             return testDir
-          case 'service-name':
-            return 'test-service'
-          case 'service-namespace':
-            return 'test-namespace'
-          case 'service-version':
-            return 'v1.0.0'
-          case 'deployment-environment':
-            return 'production'
           case 'otlp-endpoint':
             return 'http://localhost:4318/v1/metrics'
           case 'otlp-headers':
             return 'api-key=secret123,x-tenant=test'
-          case 'otlp-protocol':
-            return 'http/protobuf'
           default:
             return ''
         }
@@ -128,22 +115,14 @@ describe('main.ts', () => {
     expect(mockCore.getInput).toHaveBeenCalledWith('junit-xml-folder', {
       required: true
     })
-    expect(mockCore.getInput).toHaveBeenCalledWith('service-name', {
-      required: true
-    })
-    expect(mockCore.getInput).toHaveBeenCalledWith('service-namespace', {
-      required: true
-    })
-    expect(mockCore.getInput).toHaveBeenCalledWith('deployment-environment')
     expect(mockCore.getInput).toHaveBeenCalledWith('otlp-endpoint', {
       required: true
     })
+    expect(mockCore.getInput).toHaveBeenCalledWith('otlp-headers')
 
+    // Resource should use repository name as service name
     expect(mockResources.resourceFromAttributes).toHaveBeenCalledWith({
-      'service.name': 'test-service',
-      'service.namespace': 'test-namespace',
-      'service.version': 'v1.0.0',
-      'deployment.environment.name': 'production'
+      'service.name': 'testowner/testrepo'
     })
 
     expect(mockOTLPExporter.OTLPMetricExporter).toHaveBeenCalledWith({
@@ -170,12 +149,6 @@ describe('main.ts', () => {
         switch (name) {
           case 'junit-xml-folder':
             return testDir
-          case 'service-name':
-            return 'test-service'
-          case 'service-namespace':
-            return 'test-namespace'
-          case 'deployment-environment':
-            return 'staging'
           case 'otlp-endpoint':
             return 'http://localhost:4318/v1/metrics'
           default:
@@ -206,12 +179,6 @@ describe('main.ts', () => {
         switch (name) {
           case 'junit-xml-folder':
             return testDir
-          case 'service-name':
-            return 'test-service'
-          case 'service-namespace':
-            return 'test-namespace'
-          case 'deployment-environment':
-            return 'staging'
           case 'otlp-endpoint':
             return 'http://localhost:4318/v1/metrics'
           default:
@@ -226,5 +193,57 @@ describe('main.ts', () => {
       `No test suites found in ${testDir}`
     )
     expect(mockMetricsSubmitter.submitMetrics).not.toHaveBeenCalled()
+  })
+
+  it('should automatically derive repository, branch, and commit from GitHub context', async () => {
+    writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+
+    mockCore.getInput.mockImplementation(
+      //@ts-expect-error - Mock implementation
+      (name: string) => {
+        switch (name) {
+          case 'junit-xml-folder':
+            return testDir
+          case 'otlp-endpoint':
+            return 'http://localhost:4318/v1/metrics'
+          default:
+            return ''
+        }
+      }
+    )
+
+    await run()
+
+    // Verify GitHub context is logged
+    expect(mockCore.info).toHaveBeenCalledWith(
+      '   Repository: testowner/testrepo'
+    )
+    expect(mockCore.info).toHaveBeenCalledWith('   Branch: main')
+    expect(mockCore.info).toHaveBeenCalledWith('   Commit: abc123def456')
+  })
+
+  it('should use hardcoded metrics namespace and version', async () => {
+    writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+
+    mockCore.getInput.mockImplementation(
+      //@ts-expect-error - Mock implementation
+      (name: string) => {
+        switch (name) {
+          case 'junit-xml-folder':
+            return testDir
+          case 'otlp-endpoint':
+            return 'http://localhost:4318/v1/metrics'
+          default:
+            return ''
+        }
+      }
+    )
+
+    await run()
+
+    // Should succeed with hardcoded values (cae, v13)
+    expect(mockCore.info).toHaveBeenCalledWith(
+      '✅ CI visibility metrics submitted successfully'
+    )
   })
 })

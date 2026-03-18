@@ -53,10 +53,6 @@ jobs:
         uses: ./
         with:
           junit-xml-folder: 'test-results'
-          service-name: 'cae-otel-ci-visibility'
-          service-namespace: 'redis'
-          service-version: '1.0.0-dev'
-          deployment-environment: 'ci'
           otlp-endpoint: 'https://otlp-gateway-prod-us-central-0.grafana.net/otlp/v1/metrics'
           otlp-headers:
             '{"Authorization": "Basic ${{

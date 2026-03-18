@@ -1,5 +1,5 @@
 import { MetricsSubmitter } from './metrics-submitter.js'
-import type { TMetricDataPoint, TMetricsConfig } from './metrics-generator.js'
+import type { TMetricDataPoint } from './metrics-generator.js'
 import { MeterProvider } from '@opentelemetry/sdk-metrics'
 import {
   InMemoryMetricExporter,
@@ -75,16 +75,7 @@ describe('MetricsSubmitter', () => {
   let metricReader: PeriodicExportingMetricReader
   let submitter: MetricsSubmitter
 
-  const config: TMetricsConfig = {
-    serviceName: 'test-service',
-    serviceVersion: '1.0.0',
-    environment: undefined,
-    repository: undefined,
-    branch: undefined,
-    commitSha: undefined,
-    runId: undefined,
-    jobUUID: undefined
-  }
+  const repository = 'owner/repo'
 
   const createDataPoint = (
     overrides: Partial<TMetricDataPoint> = {}
@@ -112,7 +103,7 @@ describe('MetricsSubmitter', () => {
       readers: [metricReader]
     })
     submitter = new MetricsSubmitter(
-      config,
+      repository,
       meterProvider,
       'test-namespace',
       'v1'

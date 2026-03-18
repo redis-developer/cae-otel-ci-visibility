@@ -7,7 +7,7 @@ import {
   type Gauge
 } from '@opentelemetry/api'
 import type { MeterProvider } from '@opentelemetry/sdk-metrics'
-import type { TMetricDataPoint, TMetricsConfig } from './metrics-generator.js'
+import type { TMetricDataPoint } from './metrics-generator.js'
 
 type TMetric = Histogram | Counter | UpDownCounter | Gauge
 
@@ -21,7 +21,7 @@ export class MetricsSubmitter {
   private readonly version
 
   constructor(
-    config: TMetricsConfig,
+    repository: string,
     meterProvider: MeterProvider | undefined,
     namespace: string,
     version: string
@@ -33,7 +33,7 @@ export class MetricsSubmitter {
 
     this.namespace = namespace
     this.version = version
-    this.meter = metrics.getMeter(config.serviceName, config.serviceVersion)
+    this.meter = metrics.getMeter(repository, version)
   }
 
   public submitMetrics(metricDataPoints: readonly TMetricDataPoint[]): void {

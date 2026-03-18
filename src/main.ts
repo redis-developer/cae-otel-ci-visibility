@@ -7,14 +7,7 @@ import { MetricsSubmitter } from './metrics-submitter.js'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto'
 import { AggregationTemporalityPreference } from '@opentelemetry/exporter-metrics-otlp-http'
 import { resourceFromAttributes } from '@opentelemetry/resources'
-import {
-  ATTR_SERVICE_NAME,
-  ATTR_SERVICE_VERSION
-} from '@opentelemetry/semantic-conventions'
-import {
-  ATTR_DEPLOYMENT_ENVIRONMENT_NAME,
-  ATTR_SERVICE_NAMESPACE
-} from '@opentelemetry/semantic-conventions/incubating'
+import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions'
 
 const DEFAULT_EXPORT_INTERVAL_MS = 15000
 const DEFAULT_TIMEOUT_MS = 30000
@@ -31,7 +24,6 @@ import {
   PeriodicExportingMetricReader
 } from '@opentelemetry/sdk-metrics'
 
-import { randomUUID } from 'crypto'
 class CapturingDiagLogger implements DiagLogger {
   private baseLogger: DiagConsoleLogger
   private capturedOutput: string = ''
@@ -81,49 +73,33 @@ export async function run(): Promise<void> {
     diag.setLogger(logger, DiagLogLevel.ERROR)
 
     const junitXmlFolder = core.getInput('junit-xml-folder', { required: true })
-    const serviceName = core.getInput('service-name', { required: true })
-    const serviceNamespace = core.getInput('service-namespace', {
-      required: true
-    })
-    const deploymentEnvironment =
-      core.getInput('deployment-environment') || 'staging'
     const otlpEndpoint = core.getInput('otlp-endpoint', { required: true })
-
-    const serviceVersion =
-      core.getInput('service-version') || github.context.sha.substring(0, 8)
     const otlpHeaders = core.getInput('otlp-headers') || ''
 
     const headers = parseOtlpHeaders(otlpHeaders)
 
-    const metricsNamespace = core.getInput('metrics-namespace') || 'cae'
+    const metricsNamespace = 'cae'
+    const metricsVersion = 'v13'
 
-    const metricsVersion = core.getInput('metrics-version') || 'v12'
+    const repository = `${github.context.repo.owner}/${github.context.repo.repo}`
+    const branch = github.context.ref.replace('refs/heads/', '')
+    const commitSha = github.context.sha
 
     const config: TMetricsConfig = {
-      serviceName,
-      serviceNamespace,
-      serviceVersion,
-      environment: deploymentEnvironment,
-      repository: `${github.context.repo.owner}/${github.context.repo.repo}`,
-      branch: github.context.ref.replace('refs/heads/', ''),
-      commitSha: github.context.sha,
-      runId: github.context.runId.toString(),
-      jobUUID: randomUUID()
+      repository,
+      branch,
+      commitSha
     }
 
     core.info(`🔧 Configuring OpenTelemetry CI Visibility`)
-    core.info(
-      `   Service: ${serviceNamespace}/${serviceName} v${serviceVersion}`
-    )
-    core.info(`   Environment: ${deploymentEnvironment}`)
+    core.info(`   Repository: ${repository}`)
+    core.info(`   Branch: ${branch}`)
+    core.info(`   Commit: ${commitSha}`)
     core.info(`   JUnit XML Folder: ${junitXmlFolder}`)
     core.info(`   OTLP Endpoint: ${otlpEndpoint}`)
 
     const resource = resourceFromAttributes({
-      [ATTR_SERVICE_NAME]: serviceName,
-      [ATTR_SERVICE_NAMESPACE]: serviceNamespace,
-      [ATTR_SERVICE_VERSION]: serviceVersion,
-      [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: deploymentEnvironment
+      [ATTR_SERVICE_NAME]: repository
     })
 
     const exporter = new OTLPMetricExporter({
@@ -146,7 +122,7 @@ export async function run(): Promise<void> {
     })
 
     const metricsSubmitter = new MetricsSubmitter(
-      config,
+      repository,
       meterProvider,
       metricsNamespace,
       metricsVersion

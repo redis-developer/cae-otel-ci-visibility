@@ -13,19 +13,6 @@ inputs:
   junit-xml-folder:
     description: Path to the folder containing JUnit XML files.
     required: true
-  service-name:
-    description: OpenTelemetry service name.
-    required: true
-  service-version:
-    description: OpenTelemetry service version.
-    required: false
-  service-namespace:
-    description: OpenTelemetry service namespace.
-    required: true
-  deployment-environment:
-    description: OpenTelemetry deployment environment.
-    required: true
-    default: staging
   otlp-endpoint:
     description: OpenTelemetry OTLP endpoint.
     required: true

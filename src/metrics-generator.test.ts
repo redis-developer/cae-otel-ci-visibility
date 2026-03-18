@@ -1,21 +1,88 @@
-import { generateMetrics, type TMetricsConfig } from './metrics-generator.js'
+import {
+  generateMetrics,
+  generateTestId,
+  type TMetricsConfig
+} from './metrics-generator.js'
 import type { TJUnitReport, TSuite, TTest } from './junit-parser.js'
+
+describe('generateTestId', () => {
+  it('generates id with start...end___hash format', () => {
+    const testId = generateTestId(
+      'BF.ADD',
+      'transformArguments',
+      'BF.ADD transformArguments'
+    )
+
+    // Should have format: start...end___hash
+    expect(testId).toMatch(/^.+\.\.\..*___[a-f0-9]{6}$/)
+    // Should contain the test name at the end
+    expect(testId).toContain('BF.ADD transformArguments')
+  })
+
+  it('keeps last 30 characters with ellipsis', () => {
+    const testId = generateTestId(
+      'TestSuite',
+      'with CAPACITY, ERROR, EXPANSION, NOCREATE and NONSCALING',
+      'BF.INSERT transformArguments with CAPACITY, ERROR, EXPANSION, NOCREATE and NONSCALING'
+    )
+
+    // Should have start...end format
+    expect(testId).toMatch(/^.+\.\.\./)
+    // Should keep the END of the test name (most distinctive part)
+    expect(testId).toContain('NOCREATE and NONSCALING')
+    // Should have ___hash suffix
+    expect(testId).toMatch(/___[a-f0-9]{6}$/)
+  })
+
+  it('generates deterministic ids for same inputs', () => {
+    const id1 = generateTestId('Suite', 'Class', 'test')
+    const id2 = generateTestId('Suite', 'Class', 'test')
+
+    expect(id1).toBe(id2)
+  })
+
+  it('generates different ids for different inputs', () => {
+    const id1 = generateTestId('Suite1', 'Class', 'test')
+    const id2 = generateTestId('Suite2', 'Class', 'test')
+
+    expect(id1).not.toBe(id2)
+  })
+
+  it('always uses start...end format', () => {
+    const testId = generateTestId(
+      'BF.INSERT',
+      'simple',
+      'BF.INSERT transformArguments simple'
+    )
+
+    // Always has ... in the middle
+    expect(testId).toContain('...')
+    // Has ___hash at end
+    expect(testId).toMatch(/___[a-f0-9]{6}$/)
+  })
+
+  it('preserves spaces in test name', () => {
+    const testId = generateTestId(
+      'BF.ADD',
+      'client.bf.add',
+      'BF.ADD client.bf.add'
+    )
+
+    // Spaces are preserved
+    expect(testId).toContain('BF.ADD client.bf.add')
+  })
+})
 
 describe('generateMetrics', () => {
   const config: TMetricsConfig = {
-    serviceName: 'test-service',
-    serviceVersion: '1.0.0',
-    environment: 'test',
-    repository: 'test/repo',
+    repository: 'owner/repo',
     branch: 'main',
-    commitSha: 'abc123',
-    runId: 'build-456',
-    jobUUID: 'job-456'
+    commitSha: 'abc123def456'
   }
 
   const createTest = (overrides: Partial<TTest> = {}): TTest => ({
-    name: 'test1',
-    classname: 'com.example.Test',
+    name: 'testMethod',
+    classname: 'com.example.TestClass',
     time: 1.5,
     result: { status: 'passed' },
     properties: undefined,
@@ -70,36 +137,56 @@ describe('generateMetrics', () => {
   it('generates correct metrics structure for simple passed test', () => {
     const report = createReport([createSuite()])
     const metrics = generateMetrics(report, config)
+
     expect(metrics).toHaveLength(1)
-
-    expect(metrics.map((m) => ({ name: m.metricName, type: m.metricType })))
-      .toMatchInlineSnapshot(`
-      [
-        {
-          "name": "test_duration_seconds",
-          "type": "gauge",
-        },
-      ]
-    `)
-
-    const firstMetric = metrics[0]!
-    expect(firstMetric.attributes['service.name']).toBe('test-service')
-
-    metrics.forEach((metric) => {
-      expect(metric.attributes['service.name']).toBe('test-service')
-      expect(metric.unit).toBeDefined()
-      expect(metric.description).toBeDefined()
-    })
-
-    const suiteMetrics = metrics.filter((m) =>
-      m.metricName.startsWith('test.suite')
-    )
-    suiteMetrics.forEach((metric) => {
-      expect(metric.attributes['test.framework']).toBe('junit')
-    })
+    expect(metrics[0]!.metricName).toBe('test_duration_seconds')
+    expect(metrics[0]!.metricType).toBe('gauge')
   })
 
-  it('generates gauge metrics for test duration', async () => {
+  it('generates only 4 labels (test.id + 3 base attributes)', () => {
+    const report = createReport([createSuite()])
+    const metrics = generateMetrics(report, config)
+
+    const attributes = metrics[0]!.attributes
+    expect(Object.keys(attributes)).toHaveLength(4)
+    expect(attributes).toHaveProperty(['test.id'])
+    expect(attributes).toHaveProperty(['vcs.repository.name'])
+    expect(attributes).toHaveProperty(['vcs.repository.ref.name'])
+    expect(attributes).toHaveProperty(['vcs.repository.ref.revision'])
+  })
+
+  it('does not include high-cardinality or removed labels', () => {
+    const report = createReport([createSuite()])
+    const metrics = generateMetrics(report, config)
+
+    const attributes = metrics[0]!.attributes
+
+    // Verify removed labels are not present
+    expect(attributes).not.toHaveProperty(['service.name'])
+    expect(attributes).not.toHaveProperty(['service.namespace'])
+    expect(attributes).not.toHaveProperty(['service.version'])
+    expect(attributes).not.toHaveProperty(['deployment.environment'])
+    expect(attributes).not.toHaveProperty(['ci.run.id'])
+    expect(attributes).not.toHaveProperty(['ci.job.id'])
+    expect(attributes).not.toHaveProperty(['test.name'])
+    expect(attributes).not.toHaveProperty(['test.class.name'])
+    expect(attributes).not.toHaveProperty(['test.suite.name'])
+    expect(attributes).not.toHaveProperty(['test.status'])
+    expect(attributes).not.toHaveProperty(['test.framework'])
+  })
+
+  it('includes test.id with human-readable format', () => {
+    const report = createReport([createSuite()])
+    const metrics = generateMetrics(report, config)
+
+    const testId = metrics[0]!.attributes['test.id']
+    expect(testId).toBeDefined()
+    // Should contain the test name and have ___hash suffix
+    expect(testId).toContain('testMethod')
+    expect(testId).toMatch(/___[a-f0-9]{6}$/)
+  })
+
+  it('generates gauge metrics for test duration', () => {
     const report = createReport([createSuite()])
     const metrics = generateMetrics(report, config)
 
@@ -113,41 +200,21 @@ describe('generateMetrics', () => {
     expect(testDuration?.unit).toBe('s')
   })
 
-  it('generates metrics for all test statuses', () => {
+  it('generates metrics for multiple tests', () => {
     const tests = [
-      createTest({ name: 'test1', result: { status: 'passed' } }),
-      createTest({
-        name: 'test2',
-        result: {
-          status: 'failed',
-          message: undefined,
-          type: 'AssertionError',
-          body: undefined
-        }
-      }),
-      createTest({
-        name: 'test3',
-        result: {
-          status: 'error',
-          message: undefined,
-          type: 'RuntimeError',
-          body: undefined
-        }
-      }),
-      createTest({
-        name: 'test4',
-        result: { status: 'skipped', message: undefined }
-      })
+      createTest({ name: 'test1', time: 1.0 }),
+      createTest({ name: 'test2', time: 2.0 }),
+      createTest({ name: 'test3', time: 3.0 })
     ]
 
     const suite = createSuite({
       tests,
       totals: {
-        tests: 4,
-        passed: 1,
-        failed: 1,
-        error: 1,
-        skipped: 1,
+        tests: 3,
+        passed: 3,
+        failed: 0,
+        error: 0,
+        skipped: 0,
         time: 6.0,
         cumulativeTime: 6.0
       }
@@ -156,95 +223,62 @@ describe('generateMetrics', () => {
     const report = createReport([suite])
     const metrics = generateMetrics(report, config)
 
-    expect(metrics).toHaveLength(4)
-    expect(metrics.map((m) => m.attributes['test.status']).sort()).toEqual([
-      'error',
-      'failed',
-      'passed',
-      'skipped'
-    ])
+    expect(metrics).toHaveLength(3)
+    expect(metrics.map((m) => m.value).sort()).toEqual([1.0, 2.0, 3.0])
+  })
 
-    expect(metrics.every((m) => m.metricName === 'test_duration_seconds')).toBe(
-      true
-    )
-    expect(metrics.every((m) => m.metricType === 'gauge')).toBe(true)
+  it('generates unique test.id for each test', () => {
+    const tests = [
+      createTest({ name: 'testA' }),
+      createTest({ name: 'testB' }),
+      createTest({ name: 'testC' })
+    ]
+
+    const suite = createSuite({ tests })
+    const report = createReport([suite])
+    const metrics = generateMetrics(report, config)
+
+    const testIds = metrics.map((m) => m.attributes['test.id'])
+    const uniqueIds = new Set(testIds)
+
+    expect(uniqueIds.size).toBe(3)
   })
 
   it('handles nested suites recursively', () => {
-    const nestedSuite = createSuite({ name: 'NestedSuite' })
+    const nestedTest = createTest({ name: 'nestedTest' })
+    const nestedSuite = createSuite({
+      name: 'NestedSuite',
+      tests: [nestedTest]
+    })
+
     const parentSuite = createSuite({
       name: 'ParentSuite',
       tests: [],
-      suites: [nestedSuite],
-      totals: {
-        tests: 1,
-        passed: 1,
-        failed: 0,
-        error: 0,
-        skipped: 0,
-        time: 2.0,
-        cumulativeTime: 2.0
-      }
+      suites: [nestedSuite]
     })
 
     const report = createReport([parentSuite])
     const metrics = generateMetrics(report, config)
 
     expect(metrics).toHaveLength(1)
-
-    expect(metrics[0]!.attributes['test.suite.name']).toBe('NestedSuite')
+    // The test.id should contain the test name
+    expect(metrics[0]!.attributes['test.id']).toContain('nestedTest')
+    expect(metrics[0]!.attributes['test.id']).toMatch(/_[a-f0-9]{6}$/)
   })
 
-  it('uses OpenTelemetry semantic conventions for attribute names', () => {
-    const report = createReport([createSuite()])
-    const metrics = generateMetrics(report, config)
-
-    const baseAttributes = metrics[0]!.attributes
-    expect(baseAttributes).toMatchInlineSnapshot(
-      {
-        'service.name': expect.any(String),
-        'service.version': expect.any(String),
-        'deployment.environment': expect.any(String),
-        'vcs.repository.name': expect.any(String),
-        'vcs.repository.ref.name': expect.any(String),
-        'vcs.repository.ref.revision': expect.any(String),
-        'ci.run.id': expect.any(String)
-      },
-      `
-      {
-        "ci.job.id": "job-456",
-        "ci.run.id": Any<String>,
-        "deployment.environment": Any<String>,
-        "service.name": Any<String>,
-        "service.version": Any<String>,
-        "test.class.name": "com.example.Test",
-        "test.framework": "junit",
-        "test.name": "test1",
-        "test.status": "passed",
-        "test.suite.name": "TestSuite",
-        "vcs.repository.name": Any<String>,
-        "vcs.repository.ref.name": Any<String>,
-        "vcs.repository.ref.revision": Any<String>,
-      }
-    `
-    )
-  })
-
-  it('handles minimal config with only required fields', () => {
+  it('handles minimal config with undefined values', () => {
     const report = createReport([createSuite()])
     const metrics = generateMetrics(report, {
-      serviceName: 'minimal',
-      serviceVersion: undefined,
-      environment: undefined,
       repository: undefined,
       branch: undefined,
-      commitSha: undefined,
-      runId: undefined,
-      jobUUID: undefined
+      commitSha: undefined
     })
 
     expect(metrics.length).toBeGreaterThan(0)
-    expect(metrics[0]!.attributes['service.name']).toBe('minimal')
+    // Should still have test.id
+    expect(metrics[0]!.attributes['test.id']).toBeDefined()
+    // Should not have undefined base attributes
+    expect(metrics[0]!.attributes['vcs.repository.name']).toBeUndefined()
   })
 
   it('preserves duration values in seconds', () => {
@@ -272,5 +306,45 @@ describe('generateMetrics', () => {
     expect(testDuration?.value).toBe(2.5)
     expect(testDuration?.unit).toBe('s')
     expect(testDuration?.metricType).toBe('gauge')
+  })
+
+  it('uses v13 low-cardinality attribute schema', () => {
+    const report = createReport([createSuite()])
+    const metrics = generateMetrics(report, config)
+
+    const attributes = metrics[0]!.attributes
+
+    expect(attributes).toMatchInlineSnapshot(`
+      {
+        "test.id": "TestS...m.example.TestClass.testMethod___c76648",
+        "vcs.repository.name": "owner/repo",
+        "vcs.repository.ref.name": "main",
+        "vcs.repository.ref.revision": "abc123def456",
+      }
+    `)
+  })
+
+  it('generates same test.id for same test across runs', () => {
+    const report = createReport([createSuite()])
+
+    const config1: TMetricsConfig = {
+      repository: 'owner/repo',
+      branch: 'main',
+      commitSha: 'commit1'
+    }
+
+    const config2: TMetricsConfig = {
+      repository: 'owner/repo',
+      branch: 'feature',
+      commitSha: 'commit2'
+    }
+
+    const metrics1 = generateMetrics(report, config1)
+    const metrics2 = generateMetrics(report, config2)
+
+    // test.id should be the same regardless of branch/commit
+    expect(metrics1[0]!.attributes['test.id']).toBe(
+      metrics2[0]!.attributes['test.id']
+    )
   })
 })

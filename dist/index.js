@@ -1,5 +1,5 @@
 import require$$0 from 'os';
-import require$$0$1, { randomUUID } from 'crypto';
+import require$$0$1, { createHash } from 'crypto';
 import require$$1, { statSync, readdirSync, readFileSync } from 'fs';
 import require$$1$5, { extname, join } from 'path';
 import require$$2$1 from 'http';
@@ -33371,6 +33371,33 @@ const ingestDir = (dirPath) => {
     }
 };
 
+/**
+ * Generates a test ID with hash suffix for uniqueness.
+ *
+ * Format: {start abbreviated}...{end of identifier}_{hash}
+ * Example: BF.EX...client.bf.exists_a7f3b2
+ *
+ * @param suiteName - Test suite name
+ * @param className - Test class name
+ * @param testName - Test method/case name
+ * @returns A unique test identifier
+ */
+const generateTestId = (suiteName, className, testName) => {
+    const START_CHARS = 5;
+    const HASH_LENGTH = 6;
+    // Create full identifier for hashing
+    const fullIdentifier = `${suiteName}.${className}.${testName}`;
+    // Generate hash suffix
+    const hash = createHash('sha256')
+        .update(fullIdentifier)
+        .digest('hex')
+        .substring(0, HASH_LENGTH);
+    // Always show: start...end (end is always END_CHARS from the full identifier)
+    const start = fullIdentifier.slice(0, START_CHARS).replace(/\.+$/, '');
+    const end = fullIdentifier.slice(-30).replace(/^\.+/, '');
+    const displayName = `${start}...${end}`;
+    return `${displayName}___${hash}`;
+};
 const generateMetrics = (report, config) => {
     const metrics = [];
     const baseAttributes = getBaseAttributes(config);
@@ -33381,13 +33408,8 @@ const generateMetrics = (report, config) => {
 };
 const generateSuiteMetrics = (suite, baseAttributes) => {
     const metrics = [];
-    const suiteAttributes = {
-        ...baseAttributes,
-        'test.suite.name': suite.name,
-        'test.framework': 'junit'
-    };
     for (const testCase of suite.tests) {
-        metrics.push(...generateTestCaseMetrics(testCase, suiteAttributes));
+        metrics.push(...generateTestCaseMetrics(testCase, suite.name, baseAttributes));
     }
     if (suite.suites) {
         for (const nestedSuite of suite.suites) {
@@ -33396,13 +33418,12 @@ const generateSuiteMetrics = (suite, baseAttributes) => {
     }
     return metrics;
 };
-const generateTestCaseMetrics = (testCase, suiteAttributes) => {
+const generateTestCaseMetrics = (testCase, suiteName, baseAttributes) => {
     const metrics = [];
+    const testId = generateTestId(suiteName, testCase.classname, testCase.name);
     const testAttributes = {
-        ...suiteAttributes,
-        'test.name': testCase.name,
-        'test.class.name': testCase.classname,
-        'test.status': testCase.result.status
+        ...baseAttributes,
+        'test.id': testId
     };
     // Only metric: test duration as a gauge for performance regression detection
     metrics.push({
@@ -33416,26 +33437,15 @@ const generateTestCaseMetrics = (testCase, suiteAttributes) => {
     return metrics;
 };
 const getBaseAttributes = (config) => {
-    const attributes = {
-        'service.name': config.serviceName
-    };
-    if (config.serviceNamespace)
-        attributes['service.namespace'] = config.serviceNamespace;
-    if (config.serviceVersion)
-        attributes['service.version'] = config.serviceVersion;
-    if (config.environment)
-        attributes['deployment.environment'] = config.environment;
-    if (config.repository)
+    const attributes = {};
+    if (config.repository) {
         attributes['vcs.repository.name'] = config.repository;
-    if (config.branch)
-        attributes['vcs.repository.ref.name'] = config.branch;
-    if (config.commitSha)
-        attributes['vcs.repository.ref.revision'] = config.commitSha;
-    if (config.runId) {
-        attributes['ci.run.id'] = config.runId;
     }
-    if (config.jobUUID) {
-        attributes['ci.job.id'] = config.jobUUID;
+    if (config.branch) {
+        attributes['vcs.repository.ref.name'] = config.branch;
+    }
+    if (config.commitSha) {
+        attributes['vcs.repository.ref.revision'] = config.commitSha;
     }
     return attributes;
 };
@@ -34740,14 +34750,14 @@ class MetricsSubmitter {
     gauges = new Map();
     namespace;
     version;
-    constructor(config, meterProvider, namespace, version) {
+    constructor(repository, meterProvider, namespace, version) {
         if (meterProvider) {
             metrics.disable();
             metrics.setGlobalMeterProvider(meterProvider);
         }
         this.namespace = namespace;
         this.version = version;
-        this.meter = metrics.getMeter(config.serviceName, config.serviceVersion);
+        this.meter = metrics.getMeter(repository, version);
     }
     submitMetrics(metricDataPoints) {
         for (const dataPoint of metricDataPoints) {
@@ -35066,13 +35076,6 @@ const VERSION$1 = '2.1.0';
  * @note **MUST** be the same for all instances of horizontally scaled services. If the value was not specified, SDKs **MUST** fallback to `unknown_service:` concatenated with [`process.executable.name`](process.md), e.g. `unknown_service:bash`. If `process.executable.name` is not available, the value **MUST** be set to `unknown_service`.
  */
 const ATTR_SERVICE_NAME = 'service.name';
-/**
- * The version string of the service API or implementation. The format is not defined by these conventions.
- *
- * @example 2.0.0
- * @example a01dbef8a
- */
-const ATTR_SERVICE_VERSION = 'service.version';
 /**
  * The language of the telemetry SDK.
  */
@@ -57019,61 +57022,6 @@ class OTLPMetricExporter extends OTLPMetricExporterBase {
     }
 }
 
-/*
- * Copyright The OpenTelemetry Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-//----------------------------------------------------------------------------------------------------------
-// DO NOT EDIT, this is an Auto-generated file from scripts/semconv/templates/registry/stable/attributes.ts.j2
-//----------------------------------------------------------------------------------------------------------
-/**
- * This attribute represents the state of the application.
- *
- * @example created
- *
- * @note The Android lifecycle states are defined in [Activity lifecycle callbacks](https://developer.android.com/guide/components/activities/activity-lifecycle#lc), and from which the `OS identifiers` are derived.
- *
- * @experimental This attribute is experimental and is subject to breaking changes in minor releases of `@opentelemetry/semantic-conventions`.
- */
-/**
- * Name of the [deployment environment](https://wikipedia.org/wiki/Deployment_environment) (aka deployment tier).
- *
- * @example staging
- * @example production
- *
- * @note `deployment.environment.name` does not affect the uniqueness constraints defined through
- * the `service.namespace`, `service.name` and `service.instance.id` resource attributes.
- * This implies that resources carrying the following attribute combinations **MUST** be
- * considered to be identifying the same service:
- *
- *   - `service.name=frontend`, `deployment.environment.name=production`
- *   - `service.name=frontend`, `deployment.environment.name=staging`.
- *
- * @experimental This attribute is experimental and is subject to breaking changes in minor releases of `@opentelemetry/semantic-conventions`.
- */
-const ATTR_DEPLOYMENT_ENVIRONMENT_NAME = 'deployment.environment.name';
-/**
- * A namespace for `service.name`.
- *
- * @example Shop
- *
- * @note A string value having a meaning that helps to distinguish a group of services, for example the team name that owns a group of services. `service.name` is expected to be unique within the same namespace. If `service.namespace` is not specified in the Resource then `service.name` is expected to be unique for all services that have no explicit namespace defined (so the empty/unspecified namespace is simply one more valid namespace). Zero-length namespace string is assumed equal to unspecified namespace.
- *
- * @experimental This attribute is experimental and is subject to breaking changes in minor releases of `@opentelemetry/semantic-conventions`.
- */
-const ATTR_SERVICE_NAMESPACE = 'service.namespace';
-
 const DEFAULT_EXPORT_INTERVAL_MS = 15000;
 const DEFAULT_TIMEOUT_MS = 30000;
 class CapturingDiagLogger {
@@ -57115,38 +57063,27 @@ async function run() {
         const logger = new CapturingDiagLogger();
         diag.setLogger(logger, DiagLogLevel.ERROR);
         const junitXmlFolder = coreExports.getInput('junit-xml-folder', { required: true });
-        const serviceName = coreExports.getInput('service-name', { required: true });
-        const serviceNamespace = coreExports.getInput('service-namespace', {
-            required: true
-        });
-        const deploymentEnvironment = coreExports.getInput('deployment-environment') || 'staging';
         const otlpEndpoint = coreExports.getInput('otlp-endpoint', { required: true });
-        const serviceVersion = coreExports.getInput('service-version') || githubExports.context.sha.substring(0, 8);
         const otlpHeaders = coreExports.getInput('otlp-headers') || '';
         const headers = parseOtlpHeaders(otlpHeaders);
-        const metricsNamespace = coreExports.getInput('metrics-namespace') || 'cae';
-        const metricsVersion = coreExports.getInput('metrics-version') || 'v12';
+        const metricsNamespace = 'cae';
+        const metricsVersion = 'v13';
+        const repository = `${githubExports.context.repo.owner}/${githubExports.context.repo.repo}`;
+        const branch = githubExports.context.ref.replace('refs/heads/', '');
+        const commitSha = githubExports.context.sha;
         const config = {
-            serviceName,
-            serviceNamespace,
-            serviceVersion,
-            environment: deploymentEnvironment,
-            repository: `${githubExports.context.repo.owner}/${githubExports.context.repo.repo}`,
-            branch: githubExports.context.ref.replace('refs/heads/', ''),
-            commitSha: githubExports.context.sha,
-            runId: githubExports.context.runId.toString(),
-            jobUUID: randomUUID()
+            repository,
+            branch,
+            commitSha
         };
         coreExports.info(`🔧 Configuring OpenTelemetry CI Visibility`);
-        coreExports.info(`   Service: ${serviceNamespace}/${serviceName} v${serviceVersion}`);
-        coreExports.info(`   Environment: ${deploymentEnvironment}`);
+        coreExports.info(`   Repository: ${repository}`);
+        coreExports.info(`   Branch: ${branch}`);
+        coreExports.info(`   Commit: ${commitSha}`);
         coreExports.info(`   JUnit XML Folder: ${junitXmlFolder}`);
         coreExports.info(`   OTLP Endpoint: ${otlpEndpoint}`);
         const resource = resourceFromAttributes({
-            [ATTR_SERVICE_NAME]: serviceName,
-            [ATTR_SERVICE_NAMESPACE]: serviceNamespace,
-            [ATTR_SERVICE_VERSION]: serviceVersion,
-            [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: deploymentEnvironment
+            [ATTR_SERVICE_NAME]: repository
         });
         const exporter = new OTLPMetricExporter({
             url: otlpEndpoint,
@@ -57164,7 +57101,7 @@ async function run() {
             resource,
             readers
         });
-        const metricsSubmitter = new MetricsSubmitter(config, meterProvider, metricsNamespace, metricsVersion);
+        const metricsSubmitter = new MetricsSubmitter(repository, meterProvider, metricsNamespace, metricsVersion);
         coreExports.info(`📊 Processing JUnit XML files from: ${junitXmlFolder}`);
         const ingestResult = ingestDir(junitXmlFolder);
         if (!ingestResult.success) {
