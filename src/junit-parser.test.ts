@@ -199,7 +199,7 @@ describe('JUnit XML Parser', () => {
     })
   })
 
-  test('should reject non-string input', async () => {
+  test('should reject non-string input', () => {
     const nullResult = parseJUnitXML(null as unknown as string)
     expect(nullResult.success).toBe(false)
     expect(nullResult).toMatchObject({
@@ -222,9 +222,7 @@ describe('JUnit XML Parser', () => {
     })
   })
 
-  test('should sanitize property names to prevent prototype pollution', async () => {
-    //test perf regression
-    await setTimeout(2000)
+  test('should sanitize property names to prevent prototype pollution', () => {
     const xml = `<testsuites time="0.5">
 		<testsuite name="test" time="0.5">
 		  <properties>
@@ -247,8 +245,10 @@ describe('JUnit XML Parser', () => {
     expect(suite.properties!['valid']).toBe('good')
   })
 
-  test('should truncate very long strings', () => {
+  test('should truncate very long strings', async () => {
     const longString = 'x'.repeat(60000)
+    //test perf regression
+    await setTimeout(2000)
     const xml = `<testsuites time="0.5">
 		<testsuite name="test" time="0.5">
 		  <testcase name="test1" classname="TestClass" time="0.5">
