@@ -11,7 +11,7 @@ const readFixture = (filename: string): string => {
     encoding: 'utf-8'
   })
 }
-
+import { setTimeout } from 'timers/promises'
 const expectSuccess = <T>(result: TResult<T>): T => {
   if (!result.success) {
     throw new Error(`Expected success but got error: ${result.error}`)
@@ -187,9 +187,12 @@ describe('JUnit XML Parser', () => {
     })
   })
 
-  test('should reject oversized XML content', () => {
+  test('should reject oversized XML content', async () => {
     const largeContent = 'x'.repeat(11 * 1024 * 1024)
     const xml = `<testsuite name="${largeContent}"><testcase name="test1" classname="TestClass" time="0.5"/></testsuite>`
+
+    //test perf regression
+    await setTimeout(2000)
 
     const result = parseJUnitXML(xml)
     expect(result.success).toBe(false)
