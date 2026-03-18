@@ -245,10 +245,8 @@ describe('JUnit XML Parser', () => {
     expect(suite.properties!['valid']).toBe('good')
   })
 
-  test('should truncate very long strings', async () => {
+  test('should truncate very long strings', () => {
     const longString = 'x'.repeat(60000)
-    //test perf regression
-    await setTimeout(2000)
     const xml = `<testsuites time="0.5">
 		<testsuite name="test" time="0.5">
 		  <testcase name="test1" classname="TestClass" time="0.5">
