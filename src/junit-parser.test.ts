@@ -200,9 +200,6 @@ describe('JUnit XML Parser', () => {
   })
 
   test('should reject non-string input', async () => {
-    //test perf regression
-    await setTimeout(2000)
-
     const nullResult = parseJUnitXML(null as unknown as string)
     expect(nullResult.success).toBe(false)
     expect(nullResult).toMatchObject({
@@ -225,7 +222,9 @@ describe('JUnit XML Parser', () => {
     })
   })
 
-  test('should sanitize property names to prevent prototype pollution', () => {
+  test('should sanitize property names to prevent prototype pollution', async () => {
+    //test perf regression
+    await setTimeout(2000)
     const xml = `<testsuites time="0.5">
 		<testsuite name="test" time="0.5">
 		  <properties>
