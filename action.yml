@@ -19,6 +19,12 @@ inputs:
   otlp-headers:
     description: OpenTelemetry OTLP headers.
     required: false
+  branch-allowlist:
+    description: >-
+      Comma-separated list of branch names to emit metrics for. Empty (default)
+      emits only for the repository default branch, keeping metric cardinality
+      bounded. Use '*' to emit for every branch (not recommended).
+    required: false
 
 runs:
   using: node24

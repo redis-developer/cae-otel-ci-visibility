@@ -20,7 +20,10 @@ const mockGithub = {
     runNumber: 42,
     workflow: 'CI',
     actor: 'testuser',
-    eventName: 'push'
+    eventName: 'push',
+    payload: { repository: { default_branch: 'main' } } as {
+      repository?: { default_branch?: string }
+    }
   }
 }
 
@@ -85,6 +88,8 @@ describe('main.ts', () => {
   beforeEach(() => {
     testDir = mkdtempSync(join(tmpdir(), 'junit-test-'))
     jest.clearAllMocks()
+    mockGithub.context.ref = 'refs/heads/main'
+    mockGithub.context.payload = { repository: { default_branch: 'main' } }
   })
 
   afterEach(() => {
@@ -241,9 +246,173 @@ describe('main.ts', () => {
 
     await run()
 
-    // Should succeed with hardcoded values (cae, v13)
+    // Should succeed with hardcoded values (cae, v14)
     expect(mockCore.info).toHaveBeenCalledWith(
       '✅ CI visibility metrics submitted successfully'
     )
+  })
+
+  it('should skip metrics emission on non-default branches by default', async () => {
+    writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+    mockGithub.context.ref = 'refs/heads/feature-x'
+
+    mockCore.getInput.mockImplementation(
+      //@ts-expect-error - Mock implementation
+      (name: string) => {
+        switch (name) {
+          case 'junit-xml-folder':
+            return testDir
+          case 'otlp-endpoint':
+            return 'http://localhost:4318/v1/metrics'
+          default:
+            return ''
+        }
+      }
+    )
+
+    await run()
+
+    expect(mockCore.info).toHaveBeenCalledWith(
+      expect.stringContaining('Skipping metrics emission')
+    )
+    expect(mockOTLPExporter.OTLPMetricExporter).not.toHaveBeenCalled()
+    expect(mockMetricsSubmitter.submitMetrics).not.toHaveBeenCalled()
+    expect(mockCore.setFailed).not.toHaveBeenCalled()
+  })
+
+  it('should emit for branches in the branch-allowlist', async () => {
+    writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+    mockGithub.context.ref = 'refs/heads/releases/v2'
+
+    mockCore.getInput.mockImplementation(
+      //@ts-expect-error - Mock implementation
+      (name: string) => {
+        switch (name) {
+          case 'junit-xml-folder':
+            return testDir
+          case 'otlp-endpoint':
+            return 'http://localhost:4318/v1/metrics'
+          case 'branch-allowlist':
+            return 'main, releases/v2'
+          default:
+            return ''
+        }
+      }
+    )
+
+    await run()
+
+    expect(mockMetricsSubmitter.submitMetrics).toHaveBeenCalledTimes(1)
+    expect(mockCore.setFailed).not.toHaveBeenCalled()
+  })
+
+  it("should emit on any branch when branch-allowlist is '*'", async () => {
+    writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+    mockGithub.context.ref = 'refs/heads/feature-y'
+
+    mockCore.getInput.mockImplementation(
+      //@ts-expect-error - Mock implementation
+      (name: string) => {
+        switch (name) {
+          case 'junit-xml-folder':
+            return testDir
+          case 'otlp-endpoint':
+            return 'http://localhost:4318/v1/metrics'
+          case 'branch-allowlist':
+            return '*'
+          default:
+            return ''
+        }
+      }
+    )
+
+    await run()
+
+    expect(mockMetricsSubmitter.submitMetrics).toHaveBeenCalledTimes(1)
+  })
+
+  it('should warn when test ids look nondeterministic', async () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<testsuites time="1.0">
+  <testsuite name="sessions" time="1.0">
+    <testcase classname="client.session" name="reconnects after 3f2b8c9a-77aa-4bde-9c01-2f4a5b6c7d8e expires" time="0.5"/>
+    <testcase classname="client.session" name="connects" time="0.5"/>
+  </testsuite>
+</testsuites>`
+    writeFileSync(join(testDir, 'nondeterministic.xml'), xml)
+
+    mockCore.getInput.mockImplementation(
+      //@ts-expect-error - Mock implementation
+      (name: string) => {
+        switch (name) {
+          case 'junit-xml-folder':
+            return testDir
+          case 'otlp-endpoint':
+            return 'http://localhost:4318/v1/metrics'
+          default:
+            return ''
+        }
+      }
+    )
+
+    await run()
+
+    expect(mockCore.warning).toHaveBeenCalledWith(
+      expect.stringContaining('look nondeterministic')
+    )
+    expect(mockCore.warning).toHaveBeenCalledWith(
+      expect.stringContaining('3f2b8c9a-77aa-4bde-9c01-2f4a5b6c7d8e')
+    )
+    // Still submits — nondeterministic names are a warning, not a failure
+    expect(mockMetricsSubmitter.submitMetrics).toHaveBeenCalledTimes(1)
+    expect(mockCore.setFailed).not.toHaveBeenCalled()
+  })
+
+  it('should not warn for deterministic test ids', async () => {
+    writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+
+    mockCore.getInput.mockImplementation(
+      //@ts-expect-error - Mock implementation
+      (name: string) => {
+        switch (name) {
+          case 'junit-xml-folder':
+            return testDir
+          case 'otlp-endpoint':
+            return 'http://localhost:4318/v1/metrics'
+          default:
+            return ''
+        }
+      }
+    )
+
+    await run()
+
+    expect(mockCore.warning).not.toHaveBeenCalledWith(
+      expect.stringContaining('look nondeterministic')
+    )
+  })
+
+  it('should emit when the default branch cannot be determined', async () => {
+    writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+    mockGithub.context.ref = 'refs/heads/whatever'
+    mockGithub.context.payload = {}
+
+    mockCore.getInput.mockImplementation(
+      //@ts-expect-error - Mock implementation
+      (name: string) => {
+        switch (name) {
+          case 'junit-xml-folder':
+            return testDir
+          case 'otlp-endpoint':
+            return 'http://localhost:4318/v1/metrics'
+          default:
+            return ''
+        }
+      }
+    )
+
+    await run()
+
+    expect(mockMetricsSubmitter.submitMetrics).toHaveBeenCalledTimes(1)
   })
 })

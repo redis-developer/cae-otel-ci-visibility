@@ -2,11 +2,8 @@ import * as core from '@actions/core'
 
 import * as github from '@actions/github'
 import { ingestDir } from './junit-parser.js'
-import {
-  generateMetrics,
-  generateRunId,
-  type TMetricsConfig
-} from './metrics-generator.js'
+import { generateMetrics, type TMetricsConfig } from './metrics-generator.js'
+import { detectNondeterministicTestIds } from './nondeterminism-detector.js'
 import { MetricsSubmitter } from './metrics-submitter.js'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto'
 import { AggregationTemporalityPreference } from '@opentelemetry/exporter-metrics-otlp-http'
@@ -79,31 +76,46 @@ export async function run(): Promise<void> {
     const junitXmlFolder = core.getInput('junit-xml-folder', { required: true })
     const otlpEndpoint = core.getInput('otlp-endpoint', { required: true })
     const otlpHeaders = core.getInput('otlp-headers') || ''
+    const branchAllowlist = core.getInput('branch-allowlist') || ''
 
     const headers = parseOtlpHeaders(otlpHeaders)
 
     const metricsNamespace = 'cae'
-    const metricsVersion = 'v13'
+    const metricsVersion = 'v14'
 
     const repository = `${github.context.repo.owner}/${github.context.repo.repo}`
     const branch = github.context.ref.replace('refs/heads/', '')
     const commitSha = github.context.sha
-    const runId = generateRunId()
+    const payloadRepository = github.context.payload.repository
+    const defaultBranch =
+      typeof payloadRepository?.default_branch === 'string'
+        ? payloadRepository.default_branch
+        : undefined
 
     const config: TMetricsConfig = {
       repository,
-      branch,
-      commitSha,
-      runId
+      branch
     }
 
     core.info(`🔧 Configuring OpenTelemetry CI Visibility`)
     core.info(`   Repository: ${repository}`)
     core.info(`   Branch: ${branch}`)
     core.info(`   Commit: ${commitSha}`)
-    core.info(`   Run ID: ${runId}`)
     core.info(`   JUnit XML Folder: ${junitXmlFolder}`)
     core.info(`   OTLP Endpoint: ${otlpEndpoint}`)
+
+    const branchDecision = shouldEmitForBranch(
+      branch,
+      branchAllowlist,
+      defaultBranch
+    )
+
+    if (!branchDecision.emit) {
+      core.info(`⏭️ Skipping metrics emission: ${branchDecision.reason}`)
+      return
+    }
+
+    core.info(`   Branch gate: ${branchDecision.reason}`)
 
     const resource = resourceFromAttributes({
       [ATTR_SERVICE_NAME]: repository
@@ -155,6 +167,9 @@ export async function run(): Promise<void> {
     core.info(
       `Generated ${metricDataPoints.length} metrics from ${report.testsuites.length} test suites`
     )
+
+    warnOnNondeterministicTestIds(metricDataPoints)
+
     metricsSubmitter.submitMetrics(metricDataPoints)
 
     core.info(
@@ -175,6 +190,89 @@ export async function run(): Promise<void> {
     const errorMessage = error instanceof Error ? error.message : String(error)
     core.error(`❌ CI visibility metrics submission failed: ${errorMessage}`)
     core.setFailed(`Action failed: ${errorMessage}`)
+  }
+}
+
+const MAX_REPORTED_SUSPICIOUS_IDS = 10
+
+// A run-varying value in a test name (UUID, timestamp, port, temp path)
+// mints a new series every run — the same churn the v14 schema removed from
+// the label set. Warn, don't fail: the fix belongs in the test names.
+const warnOnNondeterministicTestIds = (
+  metricDataPoints: readonly { attributes: Readonly<Record<string, string>> }[]
+): void => {
+  const suspicious = detectNondeterministicTestIds(
+    metricDataPoints.map((dataPoint) => dataPoint.attributes['test.id'])
+  )
+
+  if (suspicious.length === 0) {
+    return
+  }
+
+  const preview = suspicious
+    .slice(0, MAX_REPORTED_SUSPICIOUS_IDS)
+    .map((entry) => `  - ${entry.testId} (${entry.reasons.join(', ')})`)
+    .join('\n')
+  const overflow =
+    suspicious.length > MAX_REPORTED_SUSPICIOUS_IDS
+      ? `\n  ...and ${suspicious.length - MAX_REPORTED_SUSPICIOUS_IDS} more`
+      : ''
+
+  core.warning(
+    `${suspicious.length} test id(s) look nondeterministic — run-varying values in test names mint a new metric series every run:\n` +
+      `${preview}${overflow}\n` +
+      `Fix the test names (or the reporter's name template) to keep metric cardinality bounded.`
+  )
+}
+
+type TBranchDecision = {
+  readonly emit: boolean
+  readonly reason: string
+}
+
+// Branch names multiply against test.id cardinality, and short-lived branch
+// values (PRs) never repeat — so by default metrics are emitted only for the
+// repository default branch. An explicit allowlist overrides that; '*'
+// disables gating entirely.
+const shouldEmitForBranch = (
+  branch: string,
+  allowlistInput: string,
+  defaultBranch: string | undefined
+): TBranchDecision => {
+  const allowlist = allowlistInput
+    .split(',')
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0)
+
+  if (allowlist.includes('*')) {
+    return { emit: true, reason: "branch-allowlist is '*'" }
+  }
+
+  if (allowlist.length > 0) {
+    if (allowlist.includes(branch)) {
+      return { emit: true, reason: `branch '${branch}' is in the allowlist` }
+    }
+
+    return {
+      emit: false,
+      reason: `branch '${branch}' is not in the allowlist (${allowlist.join(', ')})`
+    }
+  }
+
+  if (!defaultBranch) {
+    return {
+      emit: true,
+      reason: `default branch is unknown for this event; emitting for branch '${branch}'`
+    }
+  }
+
+  if (branch === defaultBranch) {
+    return { emit: true, reason: `branch '${branch}' is the default branch` }
+  }
+
+  return {
+    emit: false,
+    reason: `branch '${branch}' is not the default branch '${defaultBranch}' (set branch-allowlist to override)`
   }
 }
 

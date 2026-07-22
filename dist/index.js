@@ -1,5 +1,5 @@
 import require$$0 from 'os';
-import require$$0$1, { randomUUID, createHash } from 'crypto';
+import require$$0$1, { createHash } from 'crypto';
 import require$$1, { statSync, readdirSync, readFileSync } from 'fs';
 import require$$1$5, { extname, join } from 'path';
 import require$$2$1 from 'http';
@@ -33371,92 +33371,211 @@ const ingestDir = (dirPath) => {
     }
 };
 
+// Length caps bytes, not cardinality. Mimir rejects label values over 2048
+// bytes (default max_label_value_length) and a rejected sample fails the
+// whole export, so IDs must stay well under that; 256 makes truncation rare.
+const MAX_TEST_ID_LENGTH = 256;
+const TRUNCATED_HEAD_CHARS = 80;
+const HASH_LENGTH = 8;
+// head + '...' + tail + '___' + hash must fit within MAX_TEST_ID_LENGTH
+const TRUNCATED_TAIL_CHARS = MAX_TEST_ID_LENGTH - TRUNCATED_HEAD_CHARS - HASH_LENGTH - '...___'.length;
 /**
- * Generates a unique run ID for this CI run.
- * All tests in the same run share this ID.
- */
-const generateRunId = () => {
-    return randomUUID();
-};
-/**
- * Generates a test ID with hash suffix for uniqueness.
+ * Generates a deterministic, human-readable test ID.
  *
- * Format: {start abbreviated}...{end of identifier}_{hash}
- * Example: BF.EX...client.bf.exists_a7f3b2
+ * The ID is `{className}.{testName}`. Suite names mostly duplicate the class
+ * name (Surefire) or are constant noise (`pytest`), so the suite is only
+ * used as a fallback when the class name is empty. A test name that repeats
+ * the class name as a dot- or space-separated prefix (or a class name that
+ * already ends with the test name) is collapsed so no part appears twice.
  *
- * @param suiteName - Test suite name
+ * Two different tests sharing a class and test name under different suites
+ * would collide here — `generateMetrics` detects that within a report and
+ * switches the colliding tests to the suite-qualified form.
+ *
+ * @param suiteName - Test suite name (fallback context only)
  * @param className - Test class name
  * @param testName - Test method/case name
  * @returns A unique test identifier
  */
 const generateTestId = (suiteName, className, testName) => {
-    const START_CHARS = 5;
-    const HASH_LENGTH = 6;
-    // Create full identifier for hashing
-    const fullIdentifier = `${suiteName}.${className}.${testName}`;
-    // Generate hash suffix
+    const context = normalizeSegment(className) || normalizeSegment(suiteName);
+    const fullId = compactJoin(context, normalizeSegment(testName));
+    if (!fullId) {
+        return 'unnamed';
+    }
+    return capTestIdLength(fullId);
+};
+/**
+ * Suite-qualified variant, used only for tests whose short ID collides with
+ * a different test in the same report (same class and test name under
+ * different suites). Applies the same compaction rules between suite and
+ * class, so a suite repeating the class still adds nothing.
+ */
+const generateSuiteQualifiedTestId = (suiteName, className, testName) => {
+    const context = compactJoin(normalizeSegment(suiteName), normalizeSegment(className));
+    const fullId = compactJoin(context, normalizeSegment(testName));
+    if (!fullId) {
+        return 'unnamed';
+    }
+    return capTestIdLength(fullId);
+};
+const normalizeSegment = (value) => value.replace(/\s+/g, ' ').trim();
+const compactJoin = (context, test) => {
+    if (!context) {
+        return test;
+    }
+    if (!test) {
+        return context;
+    }
+    const testRepeatsContext = test === context ||
+        test.startsWith(`${context}.`) ||
+        test.startsWith(`${context} `);
+    if (testRepeatsContext) {
+        return test;
+    }
+    const contextEndsWithTest = context.endsWith(`.${test}`) || context.endsWith(` ${test}`);
+    if (contextEndsWithTest) {
+        return context;
+    }
+    return `${context}.${test}`;
+};
+const capTestIdLength = (fullId) => {
+    if (fullId.length <= MAX_TEST_ID_LENGTH) {
+        return fullId;
+    }
     const hash = createHash('sha256')
-        .update(fullIdentifier)
+        .update(fullId)
         .digest('hex')
         .substring(0, HASH_LENGTH);
-    // Always show: start...end (end is always END_CHARS from the full identifier)
-    const start = fullIdentifier.slice(0, START_CHARS).replace(/\.+$/, '');
-    const end = fullIdentifier.slice(-30).replace(/^\.+/, '');
-    const displayName = `${start}...${end}`;
-    return `${displayName}___${hash}`;
+    const head = fullId.slice(0, TRUNCATED_HEAD_CHARS).replace(/\.+$/, '');
+    const tail = fullId.slice(-TRUNCATED_TAIL_CHARS).replace(/^\.+/, '');
+    return `${head}...${tail}___${hash}`;
 };
 const generateMetrics = (report, config) => {
-    const metrics = [];
     const baseAttributes = getBaseAttributes(config);
+    const flattened = [];
     for (const suite of report.testsuites) {
-        metrics.push(...generateSuiteMetrics(suite, baseAttributes));
+        flattenSuite(suite, flattened);
     }
-    return metrics;
-};
-const generateSuiteMetrics = (suite, baseAttributes) => {
-    const metrics = [];
-    for (const testCase of suite.tests) {
-        metrics.push(...generateTestCaseMetrics(testCase, suite.name, baseAttributes));
-    }
-    if (suite.suites) {
-        for (const nestedSuite of suite.suites) {
-            metrics.push(...generateSuiteMetrics(nestedSuite, baseAttributes));
-        }
-    }
-    return metrics;
-};
-const generateTestCaseMetrics = (testCase, suiteName, baseAttributes) => {
-    const metrics = [];
-    const testId = generateTestId(suiteName, testCase.classname, testCase.name);
-    const testAttributes = {
-        ...baseAttributes,
-        'test.id': testId
-    };
-    // Only metric: test duration as a gauge for performance regression detection
-    metrics.push({
+    const testIds = assignTestIds(flattened);
+    return flattened.map(({ testCase }, index) => ({
         metricName: 'test_duration_seconds',
         metricType: 'gauge',
         value: testCase.time,
-        attributes: testAttributes,
+        attributes: {
+            ...baseAttributes,
+            'test.id': testIds[index]
+        },
         description: 'Individual test execution duration for performance regression detection',
         unit: 's'
-    });
-    return metrics;
+    }));
 };
+const flattenSuite = (suite, into) => {
+    for (const testCase of suite.tests) {
+        into.push({ suiteName: suite.name, testCase });
+    }
+    if (suite.suites) {
+        for (const nestedSuite of suite.suites) {
+            flattenSuite(nestedSuite, into);
+        }
+    }
+};
+/**
+ * Assigns each test its short `class.test` ID, falling back to the
+ * suite-qualified ID only for tests whose short ID is claimed by more than
+ * one distinct test in this report. Reruns of the same test (identical
+ * suite, class and name) are not collisions and share one ID.
+ */
+const assignTestIds = (flattened) => {
+    const identity = ({ suiteName, testCase }) => [suiteName, testCase.classname, testCase.name]
+        .map(normalizeSegment)
+        .join('\u0000');
+    const identitiesByShortId = new Map();
+    const shortIds = flattened.map((entry) => {
+        const shortId = generateTestId(entry.suiteName, entry.testCase.classname, entry.testCase.name);
+        const identities = identitiesByShortId.get(shortId) ?? new Set();
+        identities.add(identity(entry));
+        identitiesByShortId.set(shortId, identities);
+        return shortId;
+    });
+    return flattened.map((entry, index) => {
+        const shortId = shortIds[index];
+        const isCollision = (identitiesByShortId.get(shortId)?.size ?? 0) > 1;
+        if (!isCollision) {
+            return shortId;
+        }
+        return generateSuiteQualifiedTestId(entry.suiteName, entry.testCase.classname, entry.testCase.name);
+    });
+};
+// Deliberately excludes per-run values (run IDs, commit SHAs): a fresh label
+// value on every run mints #tests new series per run and cardinality grows
+// as tests × runs. With stable labels, runs append samples to existing
+// series and cardinality stays at tests × repos × branches.
 const getBaseAttributes = (config) => {
-    const attributes = {
-        'ci.run.id': config.runId
-    };
+    const attributes = {};
     if (config.repository) {
         attributes['vcs.repository.name'] = config.repository;
     }
     if (config.branch) {
         attributes['vcs.repository.ref.name'] = config.branch;
     }
-    if (config.commitSha) {
-        attributes['vcs.repository.ref.revision'] = config.commitSha;
-    }
     return attributes;
+};
+
+// Heuristics for run-varying values embedded in test names. Every new value
+// mints a new metric series per run, reintroducing unbounded cardinality —
+// the exact churn the v14 label schema removed. Matches are warnings, not
+// failures: a fixed date in a test name is legal, just suspicious.
+const DETECTORS = [
+    {
+        reason: 'UUID',
+        pattern: /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+    },
+    {
+        // 12+ hex chars (hashes, memory addresses). Deliberately above the
+        // 8-char hash suffix that truncated test IDs legitimately carry.
+        reason: 'long hex token',
+        pattern: /(?<![0-9a-f])[0-9a-f]{12,}(?![0-9a-f])/i
+    },
+    {
+        reason: 'ISO date',
+        pattern: /\b\d{4}-\d{2}-\d{2}\b/
+    },
+    {
+        reason: 'clock time',
+        pattern: /\b\d{1,2}:\d{2}:\d{2}\b/
+    },
+    {
+        // 10-digit epoch seconds or 13-digit epoch millis, 2017–2033 range
+        reason: 'epoch timestamp',
+        pattern: /(?<!\d)1[5-9]\d{8}(?:\d{3})?(?!\d)/
+    },
+    {
+        reason: 'host:port address',
+        pattern: /\b(?:localhost|\d{1,3}(?:\.\d{1,3}){3}):\d{2,5}\b/
+    },
+    {
+        reason: 'temp directory path',
+        pattern: /\/tmp\/|\/var\/folders\/|\\Temp\\/i
+    }
+];
+/**
+ * Flags test IDs that look nondeterministic (contain values that change
+ * from run to run). Returns one entry per distinct suspicious ID with the
+ * matched reasons.
+ */
+const detectNondeterministicTestIds = (testIds) => {
+    const suspicious = [];
+    for (const testId of new Set(testIds)) {
+        if (!testId) {
+            continue;
+        }
+        const reasons = DETECTORS.filter((detector) => detector.pattern.test(testId)).map((detector) => detector.reason);
+        if (reasons.length > 0) {
+            suspicious.push({ testId, reasons });
+        }
+    }
+    return suspicious;
 };
 
 /*
@@ -57074,26 +57193,33 @@ async function run() {
         const junitXmlFolder = coreExports.getInput('junit-xml-folder', { required: true });
         const otlpEndpoint = coreExports.getInput('otlp-endpoint', { required: true });
         const otlpHeaders = coreExports.getInput('otlp-headers') || '';
+        const branchAllowlist = coreExports.getInput('branch-allowlist') || '';
         const headers = parseOtlpHeaders(otlpHeaders);
         const metricsNamespace = 'cae';
-        const metricsVersion = 'v13';
+        const metricsVersion = 'v14';
         const repository = `${githubExports.context.repo.owner}/${githubExports.context.repo.repo}`;
         const branch = githubExports.context.ref.replace('refs/heads/', '');
         const commitSha = githubExports.context.sha;
-        const runId = generateRunId();
+        const payloadRepository = githubExports.context.payload.repository;
+        const defaultBranch = typeof payloadRepository?.default_branch === 'string'
+            ? payloadRepository.default_branch
+            : undefined;
         const config = {
             repository,
-            branch,
-            commitSha,
-            runId
+            branch
         };
         coreExports.info(`🔧 Configuring OpenTelemetry CI Visibility`);
         coreExports.info(`   Repository: ${repository}`);
         coreExports.info(`   Branch: ${branch}`);
         coreExports.info(`   Commit: ${commitSha}`);
-        coreExports.info(`   Run ID: ${runId}`);
         coreExports.info(`   JUnit XML Folder: ${junitXmlFolder}`);
         coreExports.info(`   OTLP Endpoint: ${otlpEndpoint}`);
+        const branchDecision = shouldEmitForBranch(branch, branchAllowlist, defaultBranch);
+        if (!branchDecision.emit) {
+            coreExports.info(`⏭️ Skipping metrics emission: ${branchDecision.reason}`);
+            return;
+        }
+        coreExports.info(`   Branch gate: ${branchDecision.reason}`);
         const resource = resourceFromAttributes({
             [ATTR_SERVICE_NAME]: repository
         });
@@ -57127,6 +57253,7 @@ async function run() {
         }
         const metricDataPoints = generateMetrics(report, config);
         coreExports.info(`Generated ${metricDataPoints.length} metrics from ${report.testsuites.length} test suites`);
+        warnOnNondeterministicTestIds(metricDataPoints);
         metricsSubmitter.submitMetrics(metricDataPoints);
         coreExports.info(`Summary: ${report.totals.tests} tests, ${report.totals.failed} failures, ${report.totals.error} errors, ${report.totals.skipped} skipped`);
         await meterProvider.forceFlush();
@@ -57145,6 +57272,61 @@ async function run() {
         coreExports.setFailed(`Action failed: ${errorMessage}`);
     }
 }
+const MAX_REPORTED_SUSPICIOUS_IDS = 10;
+// A run-varying value in a test name (UUID, timestamp, port, temp path)
+// mints a new series every run — the same churn the v14 schema removed from
+// the label set. Warn, don't fail: the fix belongs in the test names.
+const warnOnNondeterministicTestIds = (metricDataPoints) => {
+    const suspicious = detectNondeterministicTestIds(metricDataPoints.map((dataPoint) => dataPoint.attributes['test.id']));
+    if (suspicious.length === 0) {
+        return;
+    }
+    const preview = suspicious
+        .slice(0, MAX_REPORTED_SUSPICIOUS_IDS)
+        .map((entry) => `  - ${entry.testId} (${entry.reasons.join(', ')})`)
+        .join('\n');
+    const overflow = suspicious.length > MAX_REPORTED_SUSPICIOUS_IDS
+        ? `\n  ...and ${suspicious.length - MAX_REPORTED_SUSPICIOUS_IDS} more`
+        : '';
+    coreExports.warning(`${suspicious.length} test id(s) look nondeterministic — run-varying values in test names mint a new metric series every run:\n` +
+        `${preview}${overflow}\n` +
+        `Fix the test names (or the reporter's name template) to keep metric cardinality bounded.`);
+};
+// Branch names multiply against test.id cardinality, and short-lived branch
+// values (PRs) never repeat — so by default metrics are emitted only for the
+// repository default branch. An explicit allowlist overrides that; '*'
+// disables gating entirely.
+const shouldEmitForBranch = (branch, allowlistInput, defaultBranch) => {
+    const allowlist = allowlistInput
+        .split(',')
+        .map((name) => name.trim())
+        .filter((name) => name.length > 0);
+    if (allowlist.includes('*')) {
+        return { emit: true, reason: "branch-allowlist is '*'" };
+    }
+    if (allowlist.length > 0) {
+        if (allowlist.includes(branch)) {
+            return { emit: true, reason: `branch '${branch}' is in the allowlist` };
+        }
+        return {
+            emit: false,
+            reason: `branch '${branch}' is not in the allowlist (${allowlist.join(', ')})`
+        };
+    }
+    if (!defaultBranch) {
+        return {
+            emit: true,
+            reason: `default branch is unknown for this event; emitting for branch '${branch}'`
+        };
+    }
+    if (branch === defaultBranch) {
+        return { emit: true, reason: `branch '${branch}' is the default branch` };
+    }
+    return {
+        emit: false,
+        reason: `branch '${branch}' is not the default branch '${defaultBranch}' (set branch-allowlist to override)`
+    };
+};
 const parseOtlpHeaders = (headersInput) => {
     if (!headersInput.trim()) {
         return {};

@@ -24,52 +24,74 @@ minimal cardinality for efficient storage and querying.
 
 ## Inputs
 
-| Input               | Required | Default | Description                                  |
-| ------------------- | -------- | ------- | -------------------------------------------- |
-| `junit-xml-folder`  | yes      | -       | Path to directory containing JUnit XML files |
-| `otlp-endpoint`     | yes      | -       | OTLP metrics endpoint URL                    |
-| `otlp-headers`      | no       | -       | OTLP headers (key=value,key2=value2 or JSON) |
-| `metrics-namespace` | no       | `cae`   | Namespace prefix for metrics                 |
-| `metrics-version`   | no       | `v13`   | Version identifier for metrics schema        |
+| Input              | Required | Default        | Description                                               |
+| ------------------ | -------- | -------------- | --------------------------------------------------------- |
+| `junit-xml-folder` | yes      | -              | Path to directory containing JUnit XML files              |
+| `otlp-endpoint`    | yes      | -              | OTLP metrics endpoint URL                                 |
+| `otlp-headers`     | no       | -              | OTLP headers (key=value,key2=value2 or JSON)              |
+| `branch-allowlist` | no       | default branch | Branches to emit metrics for (comma-separated, `*` = all) |
+
+### Branch gating
+
+Branch names multiply metric cardinality, and short-lived branches (PRs) never
+repeat — so by default metrics are emitted only when the workflow runs on the
+repository default branch. Set `branch-allowlist` to a comma-separated list
+(e.g. `master,releases/v2`) to emit for those branches instead, or `*` to emit
+everywhere (not recommended).
 
 ## Metrics
 
 Generates a single, low-cardinality metric optimized for performance regression
 detection:
 
-### `{namespace}_{version}_test_duration_seconds`
+### `cae_v14_test_duration_seconds`
 
-A gauge metric recording individual test execution duration.
+A gauge metric recording individual test execution duration. The `cae` namespace
+and `v14` schema version are hardcoded.
 
 **Labels:**
 
-| Label                         | Description                          | Cardinality |
-| ----------------------------- | ------------------------------------ | ----------- |
-| `test.id`                     | Unique test identifier (see below)   | Medium      |
-| `vcs.repository.name`         | Repository (e.g., `owner/repo`)      | Low         |
-| `vcs.repository.ref.name`     | Branch name (e.g., `main`, `master`) | Low         |
-| `vcs.repository.ref.revision` | Commit SHA                           | High        |
+| Label                     | Description                          | Cardinality      |
+| ------------------------- | ------------------------------------ | ---------------- |
+| `test.id`                 | Unique test identifier (see below)   | High but bounded |
+| `vcs.repository.name`     | Repository (e.g., `owner/repo`)      | Low              |
+| `vcs.repository.ref.name` | Branch name (e.g., `main`, `master`) | Low              |
 
-**Total: 4 labels** - optimized to avoid Mimir/Prometheus query size limits.
+**Total: 3 labels.** Deliberately **no per-run labels** (run IDs, commit SHAs):
+a label value that never repeats mints one new series per test on every CI run,
+growing cardinality as `tests × runs`. With stable labels each run appends
+samples to existing series and cardinality stays at `tests × repos × branches`.
 
 ### Test ID Format
 
-The `test.id` label combines suite, class, and test name into a human-readable
-identifier with a hash suffix for uniqueness:
+`test.id` is the full human-readable `{class}.{test}` name:
 
 ```
-Format: {ClassName}.{testMethodName}_{hash}
-
-Examples:
-- UserServiceTest.testLogin_a7f3b2
-- PaymentProcessor.testRefun_c4d8e1
+com.redis.lettucemod.RedisModulesClientTest.testTimeSeriesAdd
+tests.unit.test_search.TestQueryBuilder.test_paging_offset
+BF.ADD transformArguments
 ```
 
-This provides:
+Rules:
 
-- **Human readability** - Identify the test at a glance in dashboards
-- **Uniqueness** - 6-char hash suffix handles collisions
-- **Determinism** - Same test always generates the same ID
+- **Suite names are dropped** — they usually duplicate the class name (Surefire)
+  or are constant noise (`pytest`). The suite is used as fallback context when
+  the class name is empty, and folded back in only when two different tests
+  would otherwise share an ID (same class + test name under different suites).
+- **Repeats are collapsed** — a test name that repeats the class as a dot- or
+  space-separated prefix appears once (`BF.ADD` + `BF.ADD transformArguments` →
+  `BF.ADD transformArguments`).
+- **Names over 256 chars** are truncated to `head...tail___hash8`; the hash
+  keeps truncated IDs unique (Mimir rejects label values over 2048 bytes).
+- **Deterministic** — the same test always generates the same ID.
+
+### Nondeterministic name detection
+
+Run-varying values in test names (UUIDs, timestamps, random ports, temp paths)
+mint a new `test_id` series on every run — the same churn removing per-run
+labels was meant to stop. The action scans generated IDs for these patterns and
+emits a workflow warning listing offenders; fix the test names (or the
+reporter's name template) when it fires.
 
 ## Dashboard Integration
 
@@ -79,7 +101,7 @@ Example Prometheus/Grafana queries for regression detection:
 # Baseline: average duration on default branch over 7 days
 avg by (test_id, vcs_repository_name) (
   avg_over_time(
-    cae_v13_test_duration_seconds{
+    cae_v14_test_duration_seconds{
       vcs_repository_ref_name="main"
     }[7d]
   )
@@ -88,7 +110,7 @@ avg by (test_id, vcs_repository_name) (
 # Current: latest test duration
 max by (test_id, vcs_repository_name) (
   last_over_time(
-    cae_v13_test_duration_seconds{
+    cae_v14_test_duration_seconds{
       vcs_repository_ref_name="main"
     }[1h]
   )
@@ -96,10 +118,19 @@ max by (test_id, vcs_repository_name) (
 
 # Regression detection: current > 5x baseline
 max by (test_id, vcs_repository_name) (
-  last_over_time(cae_v13_test_duration_seconds{vcs_repository_ref_name="main"}[1h])
+  last_over_time(cae_v14_test_duration_seconds{vcs_repository_ref_name="main"}[1h])
 )
 > 5 * avg by (test_id, vcs_repository_name) (
-  avg_over_time(cae_v13_test_duration_seconds{vcs_repository_ref_name="main"}[7d])
+  avg_over_time(cae_v14_test_duration_seconds{vcs_repository_ref_name="main"}[7d])
+)
+
+# Cardinality churn: test ids first seen in the last day. Spikes after merges
+# adding tests are normal; a persistently high value means test names are
+# nondeterministic (the in-action warning should name the offenders).
+count by (vcs_repository_name) (
+  last_over_time(cae_v14_test_duration_seconds[1d])
+  unless
+  last_over_time(cae_v14_test_duration_seconds[7d] offset 1d)
 )
 ```
 
@@ -109,7 +140,11 @@ The action automatically extracts from GitHub context:
 
 - Repository name (`owner/repo`)
 - Branch name
-- Commit SHA
+- Default branch (for branch gating)
+
+The commit SHA is logged in the action output for correlating a regression's
+timestamp with the commit that caused it, but is deliberately **not** a metric
+label (see cardinality note above).
 
 No manual configuration needed for these values.
 
@@ -118,6 +153,23 @@ No manual configuration needed for these values.
 - JUnit XML files
 - OTLP-compatible metrics backend
 - Node.js 24+ runtime (provided by GitHub Actions)
+
+## Migration from v2 (v13 metrics)
+
+v3 (v14) removes the per-run labels that churned one new series per test on
+every CI run, and switches `test_id` to the full human-readable name:
+
+| v2 (v13)                            | v3 (v14)                                                       |
+| ----------------------------------- | -------------------------------------------------------------- |
+| `ci_run_id` label (new UUID / run)  | Removed — per-run values churn series                          |
+| `vcs_repository_ref_revision` label | Removed — correlate commits via run timestamps / action logs   |
+| `test_id` abbreviated + 6-char hash | Full `class.test` name; truncated + hashed only over 256 chars |
+| Emitted on every branch             | Default branch only (`branch-allowlist` input to override)     |
+| `cae_v13_*` metric name             | `cae_v14_*` — new series start clean                           |
+
+All `test_id` values change on upgrade, so duration baselines restart from zero.
+Update dashboards to query `cae_v14_test_duration_seconds` and drop any
+`ci_run_id` / commit-SHA variables and matchers.
 
 ## Migration from v1 (v12 metrics)
 
