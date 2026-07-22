@@ -44,10 +44,10 @@ everywhere (not recommended).
 Generates a single, low-cardinality metric optimized for performance regression
 detection:
 
-### `cae_v14_test_duration_seconds`
+### `cae_v15_test_duration_seconds`
 
 A gauge metric recording individual test execution duration. The `cae` namespace
-and `v14` schema version are hardcoded.
+and `v15` schema version are hardcoded.
 
 **Labels:**
 
@@ -101,7 +101,7 @@ Example Prometheus/Grafana queries for regression detection:
 # Baseline: average duration on default branch over 7 days
 avg by (test_id, vcs_repository_name) (
   avg_over_time(
-    cae_v14_test_duration_seconds{
+    cae_v15_test_duration_seconds{
       vcs_repository_ref_name="main"
     }[7d]
   )
@@ -110,7 +110,7 @@ avg by (test_id, vcs_repository_name) (
 # Current: latest test duration
 max by (test_id, vcs_repository_name) (
   last_over_time(
-    cae_v14_test_duration_seconds{
+    cae_v15_test_duration_seconds{
       vcs_repository_ref_name="main"
     }[1h]
   )
@@ -118,19 +118,19 @@ max by (test_id, vcs_repository_name) (
 
 # Regression detection: current > 5x baseline
 max by (test_id, vcs_repository_name) (
-  last_over_time(cae_v14_test_duration_seconds{vcs_repository_ref_name="main"}[1h])
+  last_over_time(cae_v15_test_duration_seconds{vcs_repository_ref_name="main"}[1h])
 )
 > 5 * avg by (test_id, vcs_repository_name) (
-  avg_over_time(cae_v14_test_duration_seconds{vcs_repository_ref_name="main"}[7d])
+  avg_over_time(cae_v15_test_duration_seconds{vcs_repository_ref_name="main"}[7d])
 )
 
 # Cardinality churn: test ids first seen in the last day. Spikes after merges
 # adding tests are normal; a persistently high value means test names are
 # nondeterministic (the in-action warning should name the offenders).
 count by (vcs_repository_name) (
-  last_over_time(cae_v14_test_duration_seconds[1d])
+  last_over_time(cae_v15_test_duration_seconds[1d])
   unless
-  last_over_time(cae_v14_test_duration_seconds[7d] offset 1d)
+  last_over_time(cae_v15_test_duration_seconds[7d] offset 1d)
 )
 ```
 
@@ -156,20 +156,25 @@ No manual configuration needed for these values.
 
 ## Migration from v2 (v13 metrics)
 
-v3 (v14) removes the per-run labels that churned one new series per test on
+v3 (v15) removes the per-run labels that churned one new series per test on
 every CI run, and switches `test_id` to the full human-readable name:
 
-| v2 (v13)                            | v3 (v14)                                                       |
+| v2 (v13)                            | v3 (v15)                                                       |
 | ----------------------------------- | -------------------------------------------------------------- |
 | `ci_run_id` label (new UUID / run)  | Removed — per-run values churn series                          |
 | `vcs_repository_ref_revision` label | Removed — correlate commits via run timestamps / action logs   |
 | `test_id` abbreviated + 6-char hash | Full `class.test` name; truncated + hashed only over 256 chars |
 | Emitted on every branch             | Default branch only (`branch-allowlist` input to override)     |
-| `cae_v13_*` metric name             | `cae_v14_*` — new series start clean                           |
+| `cae_v13_*` metric name             | `cae_v15_*` — new series start clean                           |
 
 All `test_id` values change on upgrade, so duration baselines restart from zero.
-Update dashboards to query `cae_v14_test_duration_seconds` and drop any
+Update dashboards to query `cae_v15_test_duration_seconds` and drop any
 `ci_run_id` / commit-SHA variables and matchers.
+
+(A short-lived `v14` schema shipped only in action v3.0.0: its test IDs kept XML
+entities un-decoded and jest-junit duplication, and suites over 2,000 tests hit
+the SDK cardinality limit. v3.0.1 fixed those and moved to `v15` so the
+malformed day-one series can be discarded wholesale.)
 
 ## Migration from v1 (v12 metrics)
 
@@ -195,6 +200,10 @@ name/class/suite labels.
 - Processes all `.xml` files in the specified directory
 - Combines multiple XML files into a single report
 - Handles malformed XML gracefully
+- The OTel SDK cardinality limit is raised to 20,000 attribute sets (the SDK
+  default of 2,000 silently merges suites larger than 2k tests into a single
+  `otel.metric.overflow` data point); the action warns if a report ever exceeds
+  it
 - No outputs - metrics are the deliverable
 
 Built for engineers who want observability without ceremony.

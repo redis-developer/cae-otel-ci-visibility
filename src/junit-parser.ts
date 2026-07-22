@@ -422,7 +422,11 @@ export const parseJUnitXML = (xmlContent: string): TResult<TJUnitReport> => {
     textNodeName: '#text',
     parseAttributeValue: false,
     trimValues: true,
-    processEntities: false,
+    // Decodes only predefined entities (&apos; &amp; &lt; &gt; &quot;) and
+    // numeric refs: DOCTYPE/ENTITY declarations are rejected before parsing,
+    // so no custom entities can exist. Without this, test names surface as
+    // `&apos;0.5&apos;` in metric labels.
+    processEntities: true,
     allowBooleanAttributes: false,
     ignoreDeclaration: true,
     ignorePiTags: true

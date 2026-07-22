@@ -8,7 +8,7 @@ repository.
 This is a **GitHub Action** (TypeScript, ESM, Node 24+) that reads JUnit XML
 test result files and ships low-cardinality OpenTelemetry metrics over
 **OTLP/HTTP** to a metrics backend (Prometheus/Mimir/Grafana Cloud). The single
-emitted metric is a gauge `cae.v14.test_duration_seconds` recording per-test
+emitted metric is a gauge `cae.v15.test_duration_seconds` recording per-test
 duration, designed for performance-regression detection. By default metrics are
 emitted only for the repository default branch (`branch-allowlist` input
 overrides). See `README.md` for the published input/metric contract.
@@ -87,7 +87,7 @@ scans captured output for `"metrics export failed"` to decide `core.setFailed`.
 
 - **ESM with NodeNext resolution**: all relative imports must use the `.js`
   extension even for `.ts` files (e.g. `import { run } from './main.js'`).
-- **Namespace/version are hardcoded** in `main.ts` (`'cae'` / `'v14'`), not read
+- **Namespace/version are hardcoded** in `main.ts` (`'cae'` / `'v15'`), not read
   from inputs. `action.yml` defines four inputs: `junit-xml-folder`,
   `otlp-endpoint`, `otlp-headers`, `branch-allowlist` (empty = default branch
   only, `'*'` = all branches).

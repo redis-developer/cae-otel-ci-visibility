@@ -77,6 +77,20 @@ describe('generateTestId', () => {
       expected: 'BF.ADD transformArguments'
     },
     {
+      name: 'jest default classname: test ending with the class collapses',
+      suite: 'Generic Transformers',
+      className: '0, 1',
+      test: 'Generic Transformers transformBooleanArrayReply 0, 1',
+      expected: 'Generic Transformers transformBooleanArrayReply 0, 1'
+    },
+    {
+      name: 'test ending with the class across a dot collapses',
+      suite: '',
+      className: 'client.latencyHistory',
+      test: 'LATENCY HISTORY client.latencyHistory',
+      expected: 'LATENCY HISTORY client.latencyHistory'
+    },
+    {
       name: 'suite is used as fallback context when class is empty',
       suite: 'IntegrationSuite',
       className: '',
@@ -463,7 +477,7 @@ describe('generateMetrics', () => {
     expect(testDuration?.metricType).toBe('gauge')
   })
 
-  it('uses v14 low-cardinality attribute schema', () => {
+  it('uses v15 low-cardinality attribute schema', () => {
     const report = createReport([createSuite()])
     const metrics = generateMetrics(report, config)
 

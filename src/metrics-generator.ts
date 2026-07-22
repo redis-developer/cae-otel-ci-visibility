@@ -103,6 +103,15 @@ const compactJoin = (context: string, test: string): string => {
     return test
   }
 
+  // jest-junit's default classNameTemplate is the test title, so the test
+  // name frequently ends with the class ("0, 1" + "... transformReply 0, 1")
+  const testEndsWithContext =
+    test.endsWith(`.${context}`) || test.endsWith(` ${context}`)
+
+  if (testEndsWithContext) {
+    return test
+  }
+
   const contextEndsWithTest =
     context.endsWith(`.${test}`) || context.endsWith(` ${test}`)
 

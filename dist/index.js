@@ -33208,7 +33208,11 @@ const parseJUnitXML = (xmlContent) => {
         textNodeName: '#text',
         parseAttributeValue: false,
         trimValues: true,
-        processEntities: false,
+        // Decodes only predefined entities (&apos; &amp; &lt; &gt; &quot;) and
+        // numeric refs: DOCTYPE/ENTITY declarations are rejected before parsing,
+        // so no custom entities can exist. Without this, test names surface as
+        // `&apos;0.5&apos;` in metric labels.
+        processEntities: true,
         allowBooleanAttributes: false,
         ignoreDeclaration: true,
         ignorePiTags: true
@@ -33433,6 +33437,12 @@ const compactJoin = (context, test) => {
     if (testRepeatsContext) {
         return test;
     }
+    // jest-junit's default classNameTemplate is the test title, so the test
+    // name frequently ends with the class ("0, 1" + "... transformReply 0, 1")
+    const testEndsWithContext = test.endsWith(`.${context}`) || test.endsWith(` ${context}`);
+    if (testEndsWithContext) {
+        return test;
+    }
     const contextEndsWithTest = context.endsWith(`.${test}`) || context.endsWith(` ${test}`);
     if (contextEndsWithTest) {
         return context;
@@ -33524,7 +33534,7 @@ const getBaseAttributes = (config) => {
 
 // Heuristics for run-varying values embedded in test names. Every new value
 // mints a new metric series per run, reintroducing unbounded cardinality —
-// the exact churn the v14 label schema removed. Matches are warnings, not
+// the exact churn the stable label schema removed. Matches are warnings, not
 // failures: a fixed date in a test name is legal, just suspicious.
 const DETECTORS = [
     {
@@ -57152,6 +57162,10 @@ class OTLPMetricExporter extends OTLPMetricExporterBase {
 
 const DEFAULT_EXPORT_INTERVAL_MS = 15000;
 const DEFAULT_TIMEOUT_MS = 30000;
+// The SDK merges attribute sets beyond this limit into a single
+// otel.metric.overflow=true data point, silently dropping per-test series.
+// The default (2000) is below real suite sizes (2k–10k tests per repo).
+const METRIC_CARDINALITY_LIMIT = 20000;
 class CapturingDiagLogger {
     baseLogger;
     capturedOutput = '';
@@ -57196,7 +57210,7 @@ async function run() {
         const branchAllowlist = coreExports.getInput('branch-allowlist') || '';
         const headers = parseOtlpHeaders(otlpHeaders);
         const metricsNamespace = 'cae';
-        const metricsVersion = 'v14';
+        const metricsVersion = 'v15';
         const repository = `${githubExports.context.repo.owner}/${githubExports.context.repo.repo}`;
         const branch = githubExports.context.ref.replace('refs/heads/', '');
         const commitSha = githubExports.context.sha;
@@ -57237,7 +57251,13 @@ async function run() {
         ];
         const meterProvider = new MeterProvider({
             resource,
-            readers
+            readers,
+            views: [
+                {
+                    instrumentName: '*',
+                    aggregationCardinalityLimit: METRIC_CARDINALITY_LIMIT
+                }
+            ]
         });
         const metricsSubmitter = new MetricsSubmitter(repository, meterProvider, metricsNamespace, metricsVersion);
         coreExports.info(`📊 Processing JUnit XML files from: ${junitXmlFolder}`);
@@ -57254,6 +57274,14 @@ async function run() {
         const metricDataPoints = generateMetrics(report, config);
         coreExports.info(`Generated ${metricDataPoints.length} metrics from ${report.testsuites.length} test suites`);
         warnOnNondeterministicTestIds(metricDataPoints);
+        if (metricDataPoints.length > METRIC_CARDINALITY_LIMIT) {
+            coreExports.warning(`${metricDataPoints.length} data points exceed the metric cardinality limit (${METRIC_CARDINALITY_LIMIT}); ` +
+                `the excess is merged into a single otel.metric.overflow point and those tests' durations are lost`);
+        }
+        // Full dump of what gets exported; visible with ACTIONS_STEP_DEBUG=true
+        for (const dataPoint of metricDataPoints) {
+            coreExports.debug(`emit ${dataPoint.metricName} test.id="${dataPoint.attributes['test.id']}" value=${dataPoint.value}`);
+        }
         metricsSubmitter.submitMetrics(metricDataPoints);
         coreExports.info(`Summary: ${report.totals.tests} tests, ${report.totals.failed} failures, ${report.totals.error} errors, ${report.totals.skipped} skipped`);
         await meterProvider.forceFlush();
@@ -57274,8 +57302,8 @@ async function run() {
 }
 const MAX_REPORTED_SUSPICIOUS_IDS = 10;
 // A run-varying value in a test name (UUID, timestamp, port, temp path)
-// mints a new series every run — the same churn the v14 schema removed from
-// the label set. Warn, don't fail: the fix belongs in the test names.
+// mints a new series every run — the same churn the stable label schema
+// removed. Warn, don't fail: the fix belongs in the test names.
 const warnOnNondeterministicTestIds = (metricDataPoints) => {
     const suspicious = detectNondeterministicTestIds(metricDataPoints.map((dataPoint) => dataPoint.attributes['test.id']));
     if (suspicious.length === 0) {

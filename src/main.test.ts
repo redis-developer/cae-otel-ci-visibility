@@ -5,6 +5,7 @@ import { join } from 'path'
 
 const mockCore = {
   getInput: jest.fn(),
+  debug: jest.fn(),
   info: jest.fn(),
   warning: jest.fn(),
   error: jest.fn(),
@@ -140,6 +141,14 @@ describe('main.ts', () => {
       temporalityPreference: 1 // AggregationTemporalityPreference.CUMULATIVE
     })
 
+    // Default SDK cardinality limit (2000) is below real suite sizes and
+    // silently merges the excess into an otel.metric.overflow point
+    expect(mockOpenTelemetry.MeterProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        views: [expect.objectContaining({ aggregationCardinalityLimit: 20000 })]
+      })
+    )
+
     expect(mockCore.info).toHaveBeenCalledWith(
       '✅ CI visibility metrics submitted successfully'
     )
@@ -246,7 +255,7 @@ describe('main.ts', () => {
 
     await run()
 
-    // Should succeed with hardcoded values (cae, v14)
+    // Should succeed with hardcoded values (cae, v15)
     expect(mockCore.info).toHaveBeenCalledWith(
       '✅ CI visibility metrics submitted successfully'
     )

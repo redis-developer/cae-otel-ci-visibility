@@ -10,7 +10,7 @@ type TDetector = {
 
 // Heuristics for run-varying values embedded in test names. Every new value
 // mints a new metric series per run, reintroducing unbounded cardinality —
-// the exact churn the v14 label schema removed. Matches are warnings, not
+// the exact churn the stable label schema removed. Matches are warnings, not
 // failures: a fixed date in a test name is legal, just suspicious.
 const DETECTORS: readonly TDetector[] = [
   {

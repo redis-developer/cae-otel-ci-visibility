@@ -12,6 +12,10 @@ import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions'
 
 const DEFAULT_EXPORT_INTERVAL_MS = 15000
 const DEFAULT_TIMEOUT_MS = 30000
+// The SDK merges attribute sets beyond this limit into a single
+// otel.metric.overflow=true data point, silently dropping per-test series.
+// The default (2000) is below real suite sizes (2k–10k tests per repo).
+const METRIC_CARDINALITY_LIMIT = 20000
 import {
   DiagConsoleLogger,
   DiagLogFunction,
@@ -81,7 +85,7 @@ export async function run(): Promise<void> {
     const headers = parseOtlpHeaders(otlpHeaders)
 
     const metricsNamespace = 'cae'
-    const metricsVersion = 'v14'
+    const metricsVersion = 'v15'
 
     const repository = `${github.context.repo.owner}/${github.context.repo.repo}`
     const branch = github.context.ref.replace('refs/heads/', '')
@@ -137,7 +141,13 @@ export async function run(): Promise<void> {
 
     const meterProvider = new MeterProvider({
       resource,
-      readers
+      readers,
+      views: [
+        {
+          instrumentName: '*',
+          aggregationCardinalityLimit: METRIC_CARDINALITY_LIMIT
+        }
+      ]
     })
 
     const metricsSubmitter = new MetricsSubmitter(
@@ -170,6 +180,20 @@ export async function run(): Promise<void> {
 
     warnOnNondeterministicTestIds(metricDataPoints)
 
+    if (metricDataPoints.length > METRIC_CARDINALITY_LIMIT) {
+      core.warning(
+        `${metricDataPoints.length} data points exceed the metric cardinality limit (${METRIC_CARDINALITY_LIMIT}); ` +
+          `the excess is merged into a single otel.metric.overflow point and those tests' durations are lost`
+      )
+    }
+
+    // Full dump of what gets exported; visible with ACTIONS_STEP_DEBUG=true
+    for (const dataPoint of metricDataPoints) {
+      core.debug(
+        `emit ${dataPoint.metricName} test.id="${dataPoint.attributes['test.id']}" value=${dataPoint.value}`
+      )
+    }
+
     metricsSubmitter.submitMetrics(metricDataPoints)
 
     core.info(
@@ -196,8 +220,8 @@ export async function run(): Promise<void> {
 const MAX_REPORTED_SUSPICIOUS_IDS = 10
 
 // A run-varying value in a test name (UUID, timestamp, port, temp path)
-// mints a new series every run — the same churn the v14 schema removed from
-// the label set. Warn, don't fail: the fix belongs in the test names.
+// mints a new series every run — the same churn the stable label schema
+// removed. Warn, don't fail: the fix belongs in the test names.
 const warnOnNondeterministicTestIds = (
   metricDataPoints: readonly { attributes: Readonly<Record<string, string>> }[]
 ): void => {

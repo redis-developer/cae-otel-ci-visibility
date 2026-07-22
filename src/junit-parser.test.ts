@@ -20,6 +20,21 @@ const expectSuccess = <T>(result: TResult<T>): T => {
 }
 
 describe('JUnit XML Parser', () => {
+  test('should decode predefined XML entities in names', () => {
+    const xml = `<testsuites time="1.0">
+      <testsuite name="Generic &amp; Transformers" time="1.0">
+        <testcase classname="&apos;0.5&apos;" name="handles &lt;fast&gt; &quot;path&quot; &amp; more" time="0.1"/>
+      </testsuite>
+    </testsuites>`
+
+    const result = expectSuccess(parseJUnitXML(xml))
+    const suite = result.testsuites[0]!
+
+    expect(suite.name).toBe('Generic & Transformers')
+    expect(suite.tests[0]!.classname).toBe("'0.5'")
+    expect(suite.tests[0]!.name).toBe('handles <fast> "path" & more')
+  })
+
   test('should parse complete junit xml', () => {
     const xml = readFixture('junit-complete.xml')
     const result = expectSuccess(parseJUnitXML(xml))
