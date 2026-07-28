@@ -200,6 +200,11 @@ describe('generateMetrics', () => {
     branch: 'main'
   }
 
+  const byName = (
+    metrics: ReturnType<typeof generateMetrics>,
+    metricName: string
+  ) => metrics.filter((m) => m.metricName === metricName)
+
   const createTest = (overrides: Partial<TTest> = {}): TTest => ({
     name: 'testMethod',
     classname: 'com.example.TestClass',
@@ -258,9 +263,21 @@ describe('generateMetrics', () => {
     const report = createReport([createSuite()])
     const metrics = generateMetrics(report, config)
 
-    expect(metrics).toHaveLength(1)
+    const testDurations = byName(metrics, 'test_duration_seconds')
+    expect(testDurations).toHaveLength(1)
+    expect(testDurations[0]!.metricType).toBe('gauge')
+
+    // per-test points come first, then the additive per-run/per-suite rollups
     expect(metrics[0]!.metricName).toBe('test_duration_seconds')
-    expect(metrics[0]!.metricType).toBe('gauge')
+    expect(metrics.map((m) => m.metricName)).toEqual([
+      'test_duration_seconds',
+      'test_run_tests',
+      'test_run_tests',
+      'test_run_tests',
+      'test_run_tests',
+      'test_run_duration_seconds',
+      'testsuite_duration_seconds'
+    ])
   })
 
   it('generates only 3 labels (test.id + repository + branch)', () => {
@@ -340,7 +357,10 @@ describe('generateMetrics', () => {
     })
 
     const report = createReport([suite])
-    const metrics = generateMetrics(report, config)
+    const metrics = byName(
+      generateMetrics(report, config),
+      'test_duration_seconds'
+    )
 
     expect(metrics).toHaveLength(3)
     expect(metrics.map((m) => m.value).sort()).toEqual([1.0, 2.0, 3.0])
@@ -355,7 +375,10 @@ describe('generateMetrics', () => {
 
     const suite = createSuite({ tests })
     const report = createReport([suite])
-    const metrics = generateMetrics(report, config)
+    const metrics = byName(
+      generateMetrics(report, config),
+      'test_duration_seconds'
+    )
 
     const testIds = metrics.map((m) => m.attributes['test.id'])
     const uniqueIds = new Set(testIds)
@@ -378,7 +401,10 @@ describe('generateMetrics', () => {
       ]
     })
 
-    const metrics = generateMetrics(createReport([suiteA, suiteB]), config)
+    const metrics = byName(
+      generateMetrics(createReport([suiteA, suiteB]), config),
+      'test_duration_seconds'
+    )
 
     expect(metrics.map((m) => m.attributes['test.id'])).toEqual([
       // colliding pair gets the suite-qualified form
@@ -406,7 +432,10 @@ describe('generateMetrics', () => {
       ]
     })
 
-    const metrics = generateMetrics(createReport([suite]), config)
+    const metrics = byName(
+      generateMetrics(createReport([suite]), config),
+      'test_duration_seconds'
+    )
 
     expect(metrics).toHaveLength(2)
     expect(metrics.map((m) => m.attributes['test.id'])).toEqual([
@@ -429,7 +458,10 @@ describe('generateMetrics', () => {
     })
 
     const report = createReport([parentSuite])
-    const metrics = generateMetrics(report, config)
+    const metrics = byName(
+      generateMetrics(report, config),
+      'test_duration_seconds'
+    )
 
     expect(metrics).toHaveLength(1)
     expect(metrics[0]!.attributes['test.id']).toBe(
@@ -511,5 +543,293 @@ describe('generateMetrics', () => {
     expect(metrics1[0]!.attributes['test.id']).toBe(
       metrics2[0]!.attributes['test.id']
     )
+  })
+
+  describe('per-run summary rollups', () => {
+    const mixedSuite = (): TSuite =>
+      createSuite({
+        name: 'MixedSuite',
+        tests: [
+          createTest({ name: 'ok1', time: 1.0 }),
+          createTest({ name: 'ok2', time: 2.0 }),
+          createTest({
+            name: 'bad',
+            time: 0.5,
+            result: {
+              status: 'failed',
+              message: undefined,
+              type: undefined,
+              body: undefined
+            }
+          }),
+          createTest({
+            name: 'boom',
+            time: 0.25,
+            result: {
+              status: 'error',
+              message: undefined,
+              type: undefined,
+              body: undefined
+            }
+          }),
+          createTest({
+            name: 'meh',
+            time: 0,
+            result: { status: 'skipped', message: undefined }
+          })
+        ],
+        totals: {
+          tests: 5,
+          passed: 2,
+          failed: 1,
+          error: 1,
+          skipped: 1,
+          time: 3.75,
+          cumulativeTime: 3.75
+        }
+      })
+
+    it('emits one test_run_tests gauge point per result status from report.totals', () => {
+      const metrics = generateMetrics(createReport([mixedSuite()]), config)
+      const runTests = byName(metrics, 'test_run_tests')
+
+      expect(runTests).toHaveLength(4)
+      expect(runTests.every((m) => m.metricType === 'gauge')).toBe(true)
+
+      const countsByStatus = Object.fromEntries(
+        runTests.map((m) => [m.attributes['test.result.status'], m.value])
+      )
+      expect(countsByStatus).toEqual({
+        passed: 2,
+        failed: 1,
+        error: 1,
+        skipped: 1
+      })
+
+      for (const point of runTests) {
+        expect(Object.keys(point.attributes).sort()).toEqual([
+          'test.result.status',
+          'vcs.repository.name',
+          'vcs.repository.ref.name'
+        ])
+        expect(point.attributes['vcs.repository.name']).toBe('owner/repo')
+        expect(point.attributes['vcs.repository.ref.name']).toBe('main')
+      }
+    })
+
+    it('emits a single test_run_duration_seconds point from totals.cumulativeTime', () => {
+      const metrics = generateMetrics(createReport([mixedSuite()]), config)
+      const runDuration = byName(metrics, 'test_run_duration_seconds')
+
+      expect(runDuration).toHaveLength(1)
+      expect(runDuration[0]!.metricType).toBe('gauge')
+      expect(runDuration[0]!.value).toBe(3.75)
+      expect(runDuration[0]!.unit).toBe('s')
+      expect(runDuration[0]!.attributes).toEqual({
+        'vcs.repository.name': 'owner/repo',
+        'vcs.repository.ref.name': 'main'
+      })
+    })
+
+    it('run summary points match the snapshot', () => {
+      const metrics = generateMetrics(createReport([mixedSuite()]), config)
+
+      expect(metrics.filter((m) => m.metricName.startsWith('test_run_')))
+        .toMatchInlineSnapshot(`
+        [
+          {
+            "attributes": {
+              "test.result.status": "passed",
+              "vcs.repository.name": "owner/repo",
+              "vcs.repository.ref.name": "main",
+            },
+            "description": "Number of tests in the run, by result status",
+            "metricName": "test_run_tests",
+            "metricType": "gauge",
+            "unit": "{test}",
+            "value": 2,
+          },
+          {
+            "attributes": {
+              "test.result.status": "failed",
+              "vcs.repository.name": "owner/repo",
+              "vcs.repository.ref.name": "main",
+            },
+            "description": "Number of tests in the run, by result status",
+            "metricName": "test_run_tests",
+            "metricType": "gauge",
+            "unit": "{test}",
+            "value": 1,
+          },
+          {
+            "attributes": {
+              "test.result.status": "error",
+              "vcs.repository.name": "owner/repo",
+              "vcs.repository.ref.name": "main",
+            },
+            "description": "Number of tests in the run, by result status",
+            "metricName": "test_run_tests",
+            "metricType": "gauge",
+            "unit": "{test}",
+            "value": 1,
+          },
+          {
+            "attributes": {
+              "test.result.status": "skipped",
+              "vcs.repository.name": "owner/repo",
+              "vcs.repository.ref.name": "main",
+            },
+            "description": "Number of tests in the run, by result status",
+            "metricName": "test_run_tests",
+            "metricType": "gauge",
+            "unit": "{test}",
+            "value": 1,
+          },
+          {
+            "attributes": {
+              "vcs.repository.name": "owner/repo",
+              "vcs.repository.ref.name": "main",
+            },
+            "description": "Cumulative duration of all tests in the run",
+            "metricName": "test_run_duration_seconds",
+            "metricType": "gauge",
+            "unit": "s",
+            "value": 3.75,
+          },
+        ]
+      `)
+    })
+
+    it('omits repo/branch attributes when unknown, keeping test.result.status', () => {
+      const metrics = generateMetrics(createReport([mixedSuite()]), {
+        repository: undefined,
+        branch: undefined
+      })
+
+      const runTests = byName(metrics, 'test_run_tests')
+      expect(Object.keys(runTests[0]!.attributes)).toEqual([
+        'test.result.status'
+      ])
+
+      const runDuration = byName(metrics, 'test_run_duration_seconds')
+      expect(runDuration[0]!.attributes).toEqual({})
+    })
+  })
+
+  describe('per-suite rollups', () => {
+    it('emits one testsuite_duration_seconds point per top-level suite', () => {
+      const suiteA = createSuite({
+        name: 'SuiteA',
+        totals: {
+          tests: 1,
+          passed: 1,
+          failed: 0,
+          error: 0,
+          skipped: 0,
+          time: 1.5,
+          cumulativeTime: 1.5
+        }
+      })
+      const suiteB = createSuite({
+        name: 'SuiteB',
+        tests: [createTest({ name: 'other', time: 4.0 })],
+        totals: {
+          tests: 1,
+          passed: 1,
+          failed: 0,
+          error: 0,
+          skipped: 0,
+          time: 4.0,
+          cumulativeTime: 4.0
+        }
+      })
+
+      const metrics = generateMetrics(createReport([suiteA, suiteB]), config)
+      const suiteDurations = byName(metrics, 'testsuite_duration_seconds')
+
+      expect(suiteDurations).toHaveLength(2)
+      expect(
+        suiteDurations.map((m) => [m.attributes['suite.id'], m.value])
+      ).toEqual([
+        ['SuiteA', 1.5],
+        ['SuiteB', 4.0]
+      ])
+
+      for (const point of suiteDurations) {
+        expect(point.metricType).toBe('gauge')
+        expect(point.unit).toBe('s')
+        expect(point.attributes['vcs.repository.name']).toBe('owner/repo')
+        expect(point.attributes['vcs.repository.ref.name']).toBe('main')
+      }
+    })
+
+    it('does not emit points for nested suites (parent already includes them)', () => {
+      const nestedSuite = createSuite({
+        name: 'NestedSuite',
+        totals: {
+          tests: 1,
+          passed: 1,
+          failed: 0,
+          error: 0,
+          skipped: 0,
+          time: 1.5,
+          cumulativeTime: 1.5
+        }
+      })
+      const parentSuite = createSuite({
+        name: 'ParentSuite',
+        tests: [],
+        suites: [nestedSuite],
+        totals: {
+          tests: 1,
+          passed: 1,
+          failed: 0,
+          error: 0,
+          skipped: 0,
+          time: 1.5,
+          cumulativeTime: 1.5
+        }
+      })
+
+      const metrics = generateMetrics(createReport([parentSuite]), config)
+      const suiteDurations = byName(metrics, 'testsuite_duration_seconds')
+
+      expect(suiteDurations).toHaveLength(1)
+      expect(suiteDurations[0]!.attributes['suite.id']).toBe('ParentSuite')
+      expect(suiteDurations[0]!.value).toBe(1.5)
+    })
+
+    it('normalizes whitespace in suite.id', () => {
+      const suite = createSuite({ name: '  Suite   with\nspaces  ' })
+
+      const metrics = generateMetrics(createReport([suite]), config)
+      const suiteDurations = byName(metrics, 'testsuite_duration_seconds')
+
+      expect(suiteDurations[0]!.attributes['suite.id']).toBe(
+        'Suite with spaces'
+      )
+    })
+
+    it('falls back to "unnamed" for empty suite names', () => {
+      const suite = createSuite({ name: '   ' })
+
+      const metrics = generateMetrics(createReport([suite]), config)
+      const suiteDurations = byName(metrics, 'testsuite_duration_seconds')
+
+      expect(suiteDurations[0]!.attributes['suite.id']).toBe('unnamed')
+    })
+
+    it('caps suite.id at 256 chars with the head...tail___hash scheme', () => {
+      const longName = `Suite ${'x'.repeat(300)} end`
+      const suite = createSuite({ name: longName })
+
+      const metrics = generateMetrics(createReport([suite]), config)
+      const suiteId = byName(metrics, 'testsuite_duration_seconds')[0]!
+        .attributes['suite.id']!
+
+      expect(suiteId.length).toBeLessThanOrEqual(256)
+      expect(suiteId).toMatch(/^.+\.\.\..+___[a-f0-9]{8}$/)
+      expect(suiteId).toContain('end')
+    })
   })
 })

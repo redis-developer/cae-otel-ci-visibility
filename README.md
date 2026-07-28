@@ -41,8 +41,9 @@ everywhere (not recommended).
 
 ## Metrics
 
-Generates a single, low-cardinality metric optimized for performance regression
-detection:
+Generates one low-cardinality per-test metric optimized for performance
+regression detection, plus three small per-run/per-suite rollups (~5 series +
+one per top-level suite per repo) for headline stats and cheap alerting:
 
 ### `cae_v15_test_duration_seconds`
 
@@ -61,6 +62,43 @@ and `v15` schema version are hardcoded.
 a label value that never repeats mints one new series per test on every CI run,
 growing cardinality as `tests × runs`. With stable labels each run appends
 samples to existing series and cardinality stays at `tests × repos × branches`.
+
+### Run and suite rollup metrics
+
+Three additive gauges summarize each run without scanning thousands of per-test
+series. They carry the same `vcs.repository.name` / `vcs.repository.ref.name`
+labels as the per-test metric (no per-run labels), so the series-count impact is
+**~5 series + one per top-level suite, per repo/branch**.
+
+#### `cae_v15_test_run_tests`
+
+Number of tests in the run, by result status — one data point per status.
+
+| Label                     | Description                                  | Cardinality |
+| ------------------------- | -------------------------------------------- | ----------- |
+| `test.result.status`      | `passed` \| `failed` \| `error` \| `skipped` | 4           |
+| `vcs.repository.name`     | Repository                                   | Low         |
+| `vcs.repository.ref.name` | Branch                                       | Low         |
+
+#### `cae_v15_test_run_duration_seconds`
+
+Cumulative duration of all tests in the run (sum of per-test times). One series
+per repo/branch — the cheap target for "is this repo still reporting?" alerts
+and per-repo trend panels. Labels: `vcs.repository.name`,
+`vcs.repository.ref.name` only.
+
+#### `cae_v15_testsuite_duration_seconds`
+
+Cumulative duration of all tests in each **top-level** test suite (nested suites
+roll up into their parent, so they get no point of their own). Catches "every
+test in the suite got a little slower" — invisible to the per-test regression
+gate.
+
+| Label                     | Description                                                                                              | Cardinality   |
+| ------------------------- | -------------------------------------------------------------------------------------------------------- | ------------- |
+| `suite.id`                | Suite name, whitespace-normalized; over 256 chars truncated to `head...tail___hash8`; `unnamed` if empty | One per suite |
+| `vcs.repository.name`     | Repository                                                                                               | Low           |
+| `vcs.repository.ref.name` | Branch                                                                                                   | Low           |
 
 ### Test ID Format
 

@@ -1,5 +1,5 @@
 import { createHash } from 'crypto'
-import type { TJUnitReport, TSuite, TTest } from './junit-parser.js'
+import type { TJUnitReport, TSuite, TTest, TTotals } from './junit-parser.js'
 
 export interface TMetricsConfig {
   readonly repository: string | undefined
@@ -151,18 +151,95 @@ export const generateMetrics = (
 
   const testIds = assignTestIds(flattened)
 
-  return flattened.map(({ testCase }, index) => ({
-    metricName: 'test_duration_seconds',
+  const testDurationPoints: TMetricDataPoint[] = flattened.map(
+    ({ testCase }, index) => ({
+      metricName: 'test_duration_seconds',
+      metricType: 'gauge',
+      value: testCase.time,
+      attributes: {
+        ...baseAttributes,
+        'test.id': testIds[index]!
+      },
+      description:
+        'Individual test execution duration for performance regression detection',
+      unit: 's'
+    })
+  )
+
+  return [
+    ...testDurationPoints,
+    ...generateRunSummaryMetrics(report.totals, baseAttributes),
+    ...generateSuiteRollupMetrics(report.testsuites, baseAttributes)
+  ]
+}
+
+const RUN_STATUSES = ['passed', 'failed', 'error', 'skipped'] as const
+
+/**
+ * Per-repo run summary (§8A of the dashboards/alerting plan): a handful of
+ * one-series-per-repo rollups so headline stats and the telemetry-stopped
+ * alert don't have to scan thousands of per-test series. ~5 series per repo.
+ */
+const generateRunSummaryMetrics = (
+  totals: TTotals,
+  baseAttributes: Readonly<Record<string, string>>
+): TMetricDataPoint[] => {
+  const statusPoints: TMetricDataPoint[] = RUN_STATUSES.map((status) => ({
+    metricName: 'test_run_tests',
     metricType: 'gauge',
-    value: testCase.time,
+    value: totals[status],
     attributes: {
       ...baseAttributes,
-      'test.id': testIds[index]!
+      'test.result.status': status
     },
-    description:
-      'Individual test execution duration for performance regression detection',
+    description: 'Number of tests in the run, by result status',
+    unit: '{test}'
+  }))
+
+  return [
+    ...statusPoints,
+    {
+      metricName: 'test_run_duration_seconds',
+      metricType: 'gauge',
+      value: totals.cumulativeTime,
+      attributes: baseAttributes,
+      description: 'Cumulative duration of all tests in the run',
+      unit: 's'
+    }
+  ]
+}
+
+/**
+ * Per-suite rollup (§8B of the plan): one gauge point per **top-level** suite
+ * only — nested suite times already roll up into the parent's
+ * `totals.cumulativeTime`, so emitting nested suites would double count.
+ * Catches "every test in the suite got a little slower", which is invisible
+ * to the per-test regression gate.
+ */
+const generateSuiteRollupMetrics = (
+  suites: readonly TSuite[],
+  baseAttributes: Readonly<Record<string, string>>
+): TMetricDataPoint[] =>
+  suites.map((suite) => ({
+    metricName: 'testsuite_duration_seconds',
+    metricType: 'gauge',
+    value: suite.totals.cumulativeTime,
+    attributes: {
+      ...baseAttributes,
+      'suite.id': generateSuiteId(suite.name)
+    },
+    description: 'Cumulative duration of all tests in a top-level test suite',
     unit: 's'
   }))
+
+const generateSuiteId = (suiteName: string): string => {
+  const normalized = normalizeSegment(suiteName)
+
+  if (!normalized) {
+    return 'unnamed'
+  }
+
+  return capTestIdLength(normalized)
 }
 
 type TFlattenedTest = {
