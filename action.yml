@@ -27,19 +27,14 @@ inputs:
     required: false
   server-version:
     description: >-
-      Optional version of the system under test (e.g. the Redis server version a
-      client library's CI matrix runs against). Emitted as the server.version
-      label so regressions can be detected per version. Must be a stable,
-      bounded value like '8.4' — never a run id, timestamp, or other run-varying
-      value, which would mint new metric series every run.
-    required: false
-  server-version-allowlist:
-    description: >-
-      Comma-separated list of server versions to emit metrics for, matched
-      exactly against the server-version input. Empty (default) emits for any
-      server version. Use it to keep the tracked set bounded when the CI matrix
-      includes short-lived versions (release candidates, previews) you don't
-      want to monitor — their jobs run tests but upload nothing.
+      Optional version track of the system under test (e.g. the Redis server
+      version a client library's CI matrix runs against). Emitted as the
+      server.version label so regressions are detected per version. Pass the
+      track you want a test compared against over time — major.minor like '8.4',
+      with release candidates and GA builds collapsed into the same value
+      ('8.4-rc2' and '8.4.0' both as '8.4'). Must be a stable, bounded value —
+      never a run id, timestamp, or other run-varying value, which would mint
+      new metric series every run.
     required: false
 
 runs:

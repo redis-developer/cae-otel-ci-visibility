@@ -27,23 +27,30 @@ minimal cardinality for efficient storage and querying.
 
 ## Inputs
 
-| Input                      | Required | Default        | Description                                                                                                              |
-| -------------------------- | -------- | -------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `junit-xml-folder`         | yes      | -              | Path to directory containing JUnit XML files                                                                             |
-| `otlp-endpoint`            | yes      | -              | OTLP metrics endpoint URL                                                                                                |
-| `otlp-headers`             | no       | -              | OTLP headers (key=value,key2=value2 or JSON)                                                                             |
-| `branch-allowlist`         | no       | default branch | Branches to emit metrics for (comma-separated, `*` = all)                                                                |
-| `server-version`           | no       | -              | Version of the system under test (e.g. `8.4`) — emitted as the `server.version` label. Stable values only, never run ids |
-| `server-version-allowlist` | no       | all versions   | Comma-separated server versions to emit for (e.g. `7.4,8.2,8.4`); jobs with other versions upload nothing                |
+| Input              | Required | Default        | Description                                                                                                                    |
+| ------------------ | -------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `junit-xml-folder` | yes      | -              | Path to directory containing JUnit XML files                                                                                   |
+| `otlp-endpoint`    | yes      | -              | OTLP metrics endpoint URL                                                                                                      |
+| `otlp-headers`     | no       | -              | OTLP headers (key=value,key2=value2 or JSON)                                                                                   |
+| `branch-allowlist` | no       | default branch | Branches to emit metrics for (comma-separated, `*` = all)                                                                      |
+| `server-version`   | no       | -              | Version track of the system under test (e.g. `8.4`) — emitted as the `server.version` label. Stable values only, never run ids |
 
-### Server version gating
+### Server version convention
 
-Each tracked server version multiplies the per-test series count, and CI
-matrices grow over time (new majors, release candidates, previews). Set
-`server-version-allowlist` (e.g. `7.4,8.2,8.4`) to pin the tracked set: matrix
-jobs whose `server-version` isn't listed run their tests but upload nothing.
-Empty (default) emits for any server version. If the allowlist is set and a job
-provides no `server-version` at all, it is also skipped.
+Pass the **version track** you want a test compared against over time —
+`major.minor` (e.g. `8.10`), collapsing release candidates and GA builds into
+the same value (`8.10-rc2` and `8.10.0` both emit as `8.10`). Each series then
+tells the story of that version track's whole lifecycle, and a slowdown between
+two release candidates fires the same regression signal as one after GA — for a
+client library that's early warning either way. Use a distinct prefix (e.g.
+`rs-7.4`) only when a build flavor genuinely performs differently and deserves
+its own timeline.
+
+The version set stays bounded on its own: new tracks enter the matrix a few
+times a year, old ones leave and their series age out. When the input is unset,
+all of a repo's runs share one series per test — fine for repos without a server
+under test, but set it whenever the CI matrix varies the server (the action
+reminds you in its log output when it's unset).
 
 ### Branch gating
 
