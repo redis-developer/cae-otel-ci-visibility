@@ -103,3 +103,6 @@ __tests__/runner/*
 # IDE files
 .idea
 *.code-workspace
+
+# Work-in-progress Grafana artifacts (dashboards/alerts/docs) — promoted out once verified
+wip/
