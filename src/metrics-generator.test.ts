@@ -509,7 +509,7 @@ describe('generateMetrics', () => {
     expect(testDuration?.metricType).toBe('gauge')
   })
 
-  it('uses v15 low-cardinality attribute schema', () => {
+  it('uses v16 low-cardinality attribute schema', () => {
     const report = createReport([createSuite()])
     const metrics = generateMetrics(report, config)
 
@@ -522,6 +522,41 @@ describe('generateMetrics', () => {
         "vcs.repository.ref.name": "main",
       }
     `)
+  })
+
+  it('adds server.version to every metric when serverVersion is set', () => {
+    const report = createReport([createSuite()])
+    const metrics = generateMetrics(report, {
+      ...config,
+      serverVersion: '8.4'
+    })
+
+    expect(metrics.length).toBeGreaterThan(0)
+    for (const metric of metrics) {
+      expect(metric.attributes['server.version']).toBe('8.4')
+    }
+  })
+
+  it('omits server.version when serverVersion is unset or blank', () => {
+    const report = createReport([createSuite()])
+
+    for (const serverVersion of [undefined, '', '   ']) {
+      const metrics = generateMetrics(report, { ...config, serverVersion })
+
+      for (const metric of metrics) {
+        expect(metric.attributes).not.toHaveProperty('server.version')
+      }
+    }
+  })
+
+  it('normalizes whitespace in server.version', () => {
+    const report = createReport([createSuite()])
+    const metrics = generateMetrics(report, {
+      ...config,
+      serverVersion: '  rs-7.4.0   v1\n'
+    })
+
+    expect(metrics[0]!.attributes['server.version']).toBe('rs-7.4.0 v1')
   })
 
   it('generates same test.id for same test regardless of branch', () => {

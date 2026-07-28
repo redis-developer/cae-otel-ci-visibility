@@ -25,6 +25,14 @@ inputs:
       emits only for the repository default branch, keeping metric cardinality
       bounded. Use '*' to emit for every branch (not recommended).
     required: false
+  server-version:
+    description: >-
+      Optional version of the system under test (e.g. the Redis server version a
+      client library's CI matrix runs against). Emitted as the server.version
+      label so regressions can be detected per version. Must be a stable,
+      bounded value like '8.4' — never a run id, timestamp, or other run-varying
+      value, which would mint new metric series every run.
+    required: false
 
 runs:
   using: node24

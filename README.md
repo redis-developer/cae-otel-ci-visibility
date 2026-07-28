@@ -15,21 +15,25 @@ minimal cardinality for efficient storage and querying.
 ## Usage
 
 ```yaml
-- uses: redis-developer/cae-otel-ci-visibility@v2
+- uses: redis-developer/cae-otel-ci-visibility@v4
   with:
     junit-xml-folder: './test-results'
     otlp-endpoint: 'https://otlp.example.com/v1/metrics'
     otlp-headers: 'authorization=Bearer ${{ secrets.OTLP_TOKEN }}'
+    # optional — set from your CI matrix when tests run against multiple
+    # server versions, so regressions are detected per version:
+    server-version: ${{ matrix.redis-version }}
 ```
 
 ## Inputs
 
-| Input              | Required | Default        | Description                                               |
-| ------------------ | -------- | -------------- | --------------------------------------------------------- |
-| `junit-xml-folder` | yes      | -              | Path to directory containing JUnit XML files              |
-| `otlp-endpoint`    | yes      | -              | OTLP metrics endpoint URL                                 |
-| `otlp-headers`     | no       | -              | OTLP headers (key=value,key2=value2 or JSON)              |
-| `branch-allowlist` | no       | default branch | Branches to emit metrics for (comma-separated, `*` = all) |
+| Input              | Required | Default        | Description                                                                                                              |
+| ------------------ | -------- | -------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `junit-xml-folder` | yes      | -              | Path to directory containing JUnit XML files                                                                             |
+| `otlp-endpoint`    | yes      | -              | OTLP metrics endpoint URL                                                                                                |
+| `otlp-headers`     | no       | -              | OTLP headers (key=value,key2=value2 or JSON)                                                                             |
+| `branch-allowlist` | no       | default branch | Branches to emit metrics for (comma-separated, `*` = all)                                                                |
+| `server-version`   | no       | -              | Version of the system under test (e.g. `8.4`) — emitted as the `server.version` label. Stable values only, never run ids |
 
 ### Branch gating
 
@@ -45,32 +49,37 @@ Generates one low-cardinality per-test metric optimized for performance
 regression detection, plus three small per-run/per-suite rollups (~5 series +
 one per top-level suite per repo) for headline stats and cheap alerting:
 
-### `cae_v15_test_duration_seconds`
+### `cae_v16_test_duration_seconds`
 
 A gauge metric recording individual test execution duration. The `cae` namespace
-and `v15` schema version are hardcoded.
+and `v16` schema version are hardcoded.
 
 **Labels:**
 
-| Label                     | Description                          | Cardinality      |
-| ------------------------- | ------------------------------------ | ---------------- |
-| `test.id`                 | Unique test identifier (see below)   | High but bounded |
-| `vcs.repository.name`     | Repository (e.g., `owner/repo`)      | Low              |
-| `vcs.repository.ref.name` | Branch name (e.g., `main`, `master`) | Low              |
+| Label                     | Description                                     | Cardinality      |
+| ------------------------- | ----------------------------------------------- | ---------------- |
+| `test.id`                 | Unique test identifier (see below)              | High but bounded |
+| `vcs.repository.name`     | Repository (e.g., `owner/repo`)                 | Low              |
+| `vcs.repository.ref.name` | Branch name (e.g., `main`, `master`)            | Low              |
+| `server.version`          | System under test version (only when input set) | Low, bounded     |
 
-**Total: 3 labels.** Deliberately **no per-run labels** (run IDs, commit SHAs):
-a label value that never repeats mints one new series per test on every CI run,
-growing cardinality as `tests × runs`. With stable labels each run appends
-samples to existing series and cardinality stays at `tests × repos × branches`.
+**Total: up to 4 labels.** Deliberately **no per-run labels** (run IDs, commit
+SHAs): a label value that never repeats mints one new series per test on every
+CI run, growing cardinality as `tests × runs`. With stable labels each run
+appends samples to existing series and cardinality stays at
+`tests × repos × branches × server versions`. Without `server.version`, a CI
+matrix's jobs all write into one series per test, mixing distributions from
+different environments — set it when the matrix varies the system under test.
 
 ### Run and suite rollup metrics
 
 Three additive gauges summarize each run without scanning thousands of per-test
-series. They carry the same `vcs.repository.name` / `vcs.repository.ref.name`
-labels as the per-test metric (no per-run labels), so the series-count impact is
-**~5 series + one per top-level suite, per repo/branch**.
+series. They carry the same base labels as the per-test metric
+(`vcs.repository.name`, `vcs.repository.ref.name`, and `server.version` when set
+— no per-run labels), so the series-count impact is **~5 series + one per
+top-level suite, per repo/branch/server-version**.
 
-#### `cae_v15_test_run_tests`
+#### `cae_v16_test_run_tests`
 
 Number of tests in the run, by result status — one data point per status.
 
@@ -80,14 +89,14 @@ Number of tests in the run, by result status — one data point per status.
 | `vcs.repository.name`     | Repository                                   | Low         |
 | `vcs.repository.ref.name` | Branch                                       | Low         |
 
-#### `cae_v15_test_run_duration_seconds`
+#### `cae_v16_test_run_duration_seconds`
 
 Cumulative duration of all tests in the run (sum of per-test times). One series
-per repo/branch — the cheap target for "is this repo still reporting?" alerts
-and per-repo trend panels. Labels: `vcs.repository.name`,
-`vcs.repository.ref.name` only.
+per repo/branch/server-version — the cheap target for "is this repo still
+reporting?" alerts and per-repo trend panels. Labels: `vcs.repository.name`,
+`vcs.repository.ref.name`, plus `server.version` when set.
 
-#### `cae_v15_testsuite_duration_seconds`
+#### `cae_v16_testsuite_duration_seconds`
 
 Cumulative duration of all tests in each **top-level** test suite (nested suites
 roll up into their parent, so they get no point of their own). Catches "every
@@ -139,7 +148,7 @@ Example Prometheus/Grafana queries for regression detection:
 # Baseline: average duration on default branch over 7 days
 avg by (test_id, vcs_repository_name) (
   avg_over_time(
-    cae_v15_test_duration_seconds{
+    cae_v16_test_duration_seconds{
       vcs_repository_ref_name="main"
     }[7d]
   )
@@ -148,7 +157,7 @@ avg by (test_id, vcs_repository_name) (
 # Current: latest test duration
 max by (test_id, vcs_repository_name) (
   last_over_time(
-    cae_v15_test_duration_seconds{
+    cae_v16_test_duration_seconds{
       vcs_repository_ref_name="main"
     }[1h]
   )
@@ -156,19 +165,19 @@ max by (test_id, vcs_repository_name) (
 
 # Regression detection: current > 5x baseline
 max by (test_id, vcs_repository_name) (
-  last_over_time(cae_v15_test_duration_seconds{vcs_repository_ref_name="main"}[1h])
+  last_over_time(cae_v16_test_duration_seconds{vcs_repository_ref_name="main"}[1h])
 )
 > 5 * avg by (test_id, vcs_repository_name) (
-  avg_over_time(cae_v15_test_duration_seconds{vcs_repository_ref_name="main"}[7d])
+  avg_over_time(cae_v16_test_duration_seconds{vcs_repository_ref_name="main"}[7d])
 )
 
 # Cardinality churn: test ids first seen in the last day. Spikes after merges
 # adding tests are normal; a persistently high value means test names are
 # nondeterministic (the in-action warning should name the offenders).
 count by (vcs_repository_name) (
-  last_over_time(cae_v15_test_duration_seconds[1d])
+  last_over_time(cae_v16_test_duration_seconds[1d])
   unless
-  last_over_time(cae_v15_test_duration_seconds[7d] offset 1d)
+  last_over_time(cae_v16_test_duration_seconds[7d] offset 1d)
 )
 ```
 
@@ -191,6 +200,22 @@ No manual configuration needed for these values.
 - JUnit XML files
 - OTLP-compatible metrics backend
 - Node.js 24+ runtime (provided by GitHub Actions)
+
+## Migration from v3 (v15 metrics)
+
+v4 (v16) adds the optional `server.version` label so CI matrices that test
+against multiple server versions get one clean series per test per version
+instead of one mixed series per test:
+
+| v3 (v15)                 | v4 (v16)                                           |
+| ------------------------ | -------------------------------------------------- |
+| No matrix dimension      | Optional `server-version` input → `server.version` |
+| `cae_v15_*` metric names | `cae_v16_*` — new series start clean               |
+
+Update dashboards/alerts to query `cae_v16_*`. Duration baselines restart on
+upgrade. If your CI runs a matrix against multiple server versions, pass the
+version (e.g. `server-version: ${{ matrix.redis-version }}`) — otherwise the
+matrix jobs keep writing into a single series per test.
 
 ## Migration from v2 (v13 metrics)
 

@@ -33589,6 +33589,10 @@ const getBaseAttributes = (config) => {
     if (config.branch) {
         attributes['vcs.repository.ref.name'] = config.branch;
     }
+    const serverVersion = normalizeSegment(config.serverVersion ?? '');
+    if (serverVersion) {
+        attributes['server.version'] = capTestIdLength(serverVersion);
+    }
     return attributes;
 };
 
@@ -57268,9 +57272,10 @@ async function run() {
         const otlpEndpoint = coreExports.getInput('otlp-endpoint', { required: true });
         const otlpHeaders = coreExports.getInput('otlp-headers') || '';
         const branchAllowlist = coreExports.getInput('branch-allowlist') || '';
+        const serverVersion = coreExports.getInput('server-version') || '';
         const headers = parseOtlpHeaders(otlpHeaders);
         const metricsNamespace = 'cae';
-        const metricsVersion = 'v15';
+        const metricsVersion = 'v16';
         const repository = `${githubExports.context.repo.owner}/${githubExports.context.repo.repo}`;
         const branch = githubExports.context.ref.replace('refs/heads/', '');
         const commitSha = githubExports.context.sha;
@@ -57280,11 +57285,15 @@ async function run() {
             : undefined;
         const config = {
             repository,
-            branch
+            branch,
+            serverVersion: serverVersion || undefined
         };
         coreExports.info(`🔧 Configuring OpenTelemetry CI Visibility`);
         coreExports.info(`   Repository: ${repository}`);
         coreExports.info(`   Branch: ${branch}`);
+        if (serverVersion) {
+            coreExports.info(`   Server version: ${serverVersion}`);
+        }
         coreExports.info(`   Commit: ${commitSha}`);
         coreExports.info(`   JUnit XML Folder: ${junitXmlFolder}`);
         coreExports.info(`   OTLP Endpoint: ${otlpEndpoint}`);

@@ -4,6 +4,11 @@ import type { TJUnitReport, TSuite, TTest, TTotals } from './junit-parser.js'
 export interface TMetricsConfig {
   readonly repository: string | undefined
   readonly branch: string | undefined
+  // Version of the system under test (e.g. the Redis server a client is
+  // tested against). Must be a stable, bounded value — series multiply by
+  // the number of distinct versions, so a run-varying value here would
+  // reintroduce churn.
+  readonly serverVersion?: string | undefined
 }
 
 export interface TMetricDataPoint {
@@ -317,6 +322,11 @@ const getBaseAttributes = (
 
   if (config.branch) {
     attributes['vcs.repository.ref.name'] = config.branch
+  }
+
+  const serverVersion = normalizeSegment(config.serverVersion ?? '')
+  if (serverVersion) {
+    attributes['server.version'] = capTestIdLength(serverVersion)
   }
 
   return attributes

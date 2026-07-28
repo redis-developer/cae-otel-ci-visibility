@@ -81,11 +81,12 @@ export async function run(): Promise<void> {
     const otlpEndpoint = core.getInput('otlp-endpoint', { required: true })
     const otlpHeaders = core.getInput('otlp-headers') || ''
     const branchAllowlist = core.getInput('branch-allowlist') || ''
+    const serverVersion = core.getInput('server-version') || ''
 
     const headers = parseOtlpHeaders(otlpHeaders)
 
     const metricsNamespace = 'cae'
-    const metricsVersion = 'v15'
+    const metricsVersion = 'v16'
 
     const repository = `${github.context.repo.owner}/${github.context.repo.repo}`
     const branch = github.context.ref.replace('refs/heads/', '')
@@ -98,12 +99,16 @@ export async function run(): Promise<void> {
 
     const config: TMetricsConfig = {
       repository,
-      branch
+      branch,
+      serverVersion: serverVersion || undefined
     }
 
     core.info(`🔧 Configuring OpenTelemetry CI Visibility`)
     core.info(`   Repository: ${repository}`)
     core.info(`   Branch: ${branch}`)
+    if (serverVersion) {
+      core.info(`   Server version: ${serverVersion}`)
+    }
     core.info(`   Commit: ${commitSha}`)
     core.info(`   JUnit XML Folder: ${junitXmlFolder}`)
     core.info(`   OTLP Endpoint: ${otlpEndpoint}`)

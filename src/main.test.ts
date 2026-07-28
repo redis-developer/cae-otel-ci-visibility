@@ -255,7 +255,7 @@ describe('main.ts', () => {
 
     await run()
 
-    // Should succeed with hardcoded values (cae, v15)
+    // Should succeed with hardcoded values (cae, v16)
     expect(mockCore.info).toHaveBeenCalledWith(
       '✅ CI visibility metrics submitted successfully'
     )
