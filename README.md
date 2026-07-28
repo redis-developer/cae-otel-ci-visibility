@@ -27,13 +27,23 @@ minimal cardinality for efficient storage and querying.
 
 ## Inputs
 
-| Input              | Required | Default        | Description                                                                                                              |
-| ------------------ | -------- | -------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `junit-xml-folder` | yes      | -              | Path to directory containing JUnit XML files                                                                             |
-| `otlp-endpoint`    | yes      | -              | OTLP metrics endpoint URL                                                                                                |
-| `otlp-headers`     | no       | -              | OTLP headers (key=value,key2=value2 or JSON)                                                                             |
-| `branch-allowlist` | no       | default branch | Branches to emit metrics for (comma-separated, `*` = all)                                                                |
-| `server-version`   | no       | -              | Version of the system under test (e.g. `8.4`) — emitted as the `server.version` label. Stable values only, never run ids |
+| Input                      | Required | Default        | Description                                                                                                              |
+| -------------------------- | -------- | -------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `junit-xml-folder`         | yes      | -              | Path to directory containing JUnit XML files                                                                             |
+| `otlp-endpoint`            | yes      | -              | OTLP metrics endpoint URL                                                                                                |
+| `otlp-headers`             | no       | -              | OTLP headers (key=value,key2=value2 or JSON)                                                                             |
+| `branch-allowlist`         | no       | default branch | Branches to emit metrics for (comma-separated, `*` = all)                                                                |
+| `server-version`           | no       | -              | Version of the system under test (e.g. `8.4`) — emitted as the `server.version` label. Stable values only, never run ids |
+| `server-version-allowlist` | no       | all versions   | Comma-separated server versions to emit for (e.g. `7.4,8.2,8.4`); jobs with other versions upload nothing                |
+
+### Server version gating
+
+Each tracked server version multiplies the per-test series count, and CI
+matrices grow over time (new majors, release candidates, previews). Set
+`server-version-allowlist` (e.g. `7.4,8.2,8.4`) to pin the tracked set: matrix
+jobs whose `server-version` isn't listed run their tests but upload nothing.
+Empty (default) emits for any server version. If the allowlist is set and a job
+provides no `server-version` at all, it is also skipped.
 
 ### Branch gating
 

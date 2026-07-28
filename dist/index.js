@@ -57273,6 +57273,7 @@ async function run() {
         const otlpHeaders = coreExports.getInput('otlp-headers') || '';
         const branchAllowlist = coreExports.getInput('branch-allowlist') || '';
         const serverVersion = coreExports.getInput('server-version') || '';
+        const serverVersionAllowlist = coreExports.getInput('server-version-allowlist') || '';
         const headers = parseOtlpHeaders(otlpHeaders);
         const metricsNamespace = 'cae';
         const metricsVersion = 'v16';
@@ -57303,6 +57304,14 @@ async function run() {
             return;
         }
         coreExports.info(`   Branch gate: ${branchDecision.reason}`);
+        const serverVersionDecision = shouldEmitForServerVersion(serverVersion, serverVersionAllowlist);
+        if (!serverVersionDecision.emit) {
+            coreExports.info(`⏭️ Skipping metrics emission: ${serverVersionDecision.reason}`);
+            return;
+        }
+        if (serverVersionAllowlist) {
+            coreExports.info(`   Server-version gate: ${serverVersionDecision.reason}`);
+        }
         const resource = resourceFromAttributes({
             [ATTR_SERVICE_NAME]: repository
         });
@@ -57422,6 +57431,32 @@ const shouldEmitForBranch = (branch, allowlistInput, defaultBranch) => {
     return {
         emit: false,
         reason: `branch '${branch}' is not the default branch '${defaultBranch}' (set branch-allowlist to override)`
+    };
+};
+// Each allowed server version multiplies the per-test series count, and CI
+// matrices grow over time (new majors, release candidates, previews). An
+// allowlist pins the tracked set: matrix jobs for versions outside it run
+// their tests but upload nothing.
+const shouldEmitForServerVersion = (serverVersion, allowlistInput) => {
+    const allowlist = allowlistInput
+        .split(',')
+        .map((version) => version.trim())
+        .filter((version) => version.length > 0);
+    if (allowlist.length === 0) {
+        return { emit: true, reason: 'no server-version-allowlist configured' };
+    }
+    const version = serverVersion.trim();
+    if (version && allowlist.includes(version)) {
+        return {
+            emit: true,
+            reason: `server version '${version}' is in the allowlist`
+        };
+    }
+    return {
+        emit: false,
+        reason: version
+            ? `server version '${version}' is not in the allowlist (${allowlist.join(', ')})`
+            : `server-version-allowlist is set (${allowlist.join(', ')}) but no server-version was provided`
     };
 };
 const parseOtlpHeaders = (headersInput) => {

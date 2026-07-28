@@ -340,6 +340,90 @@ describe('main.ts', () => {
     expect(mockMetricsSubmitter.submitMetrics).toHaveBeenCalledTimes(1)
   })
 
+  it('should skip emission when server version is not in the allowlist', async () => {
+    writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+
+    mockCore.getInput.mockImplementation(
+      //@ts-expect-error - Mock implementation
+      (name: string) => {
+        switch (name) {
+          case 'junit-xml-folder':
+            return testDir
+          case 'otlp-endpoint':
+            return 'http://localhost:4318/v1/metrics'
+          case 'server-version':
+            return '8.10'
+          case 'server-version-allowlist':
+            return '7.4, 8.2, 8.4'
+          default:
+            return ''
+        }
+      }
+    )
+
+    await run()
+
+    expect(mockCore.info).toHaveBeenCalledWith(
+      expect.stringContaining('Skipping metrics emission')
+    )
+    expect(mockMetricsSubmitter.submitMetrics).not.toHaveBeenCalled()
+    expect(mockCore.setFailed).not.toHaveBeenCalled()
+  })
+
+  it('should emit when server version is in the allowlist', async () => {
+    writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+
+    mockCore.getInput.mockImplementation(
+      //@ts-expect-error - Mock implementation
+      (name: string) => {
+        switch (name) {
+          case 'junit-xml-folder':
+            return testDir
+          case 'otlp-endpoint':
+            return 'http://localhost:4318/v1/metrics'
+          case 'server-version':
+            return '8.4'
+          case 'server-version-allowlist':
+            return '7.4, 8.2, 8.4'
+          default:
+            return ''
+        }
+      }
+    )
+
+    await run()
+
+    expect(mockMetricsSubmitter.submitMetrics).toHaveBeenCalledTimes(1)
+    expect(mockCore.setFailed).not.toHaveBeenCalled()
+  })
+
+  it('should skip emission when allowlist is set but no server version is provided', async () => {
+    writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+
+    mockCore.getInput.mockImplementation(
+      //@ts-expect-error - Mock implementation
+      (name: string) => {
+        switch (name) {
+          case 'junit-xml-folder':
+            return testDir
+          case 'otlp-endpoint':
+            return 'http://localhost:4318/v1/metrics'
+          case 'server-version-allowlist':
+            return '7.4, 8.2'
+          default:
+            return ''
+        }
+      }
+    )
+
+    await run()
+
+    expect(mockCore.info).toHaveBeenCalledWith(
+      expect.stringContaining('Skipping metrics emission')
+    )
+    expect(mockMetricsSubmitter.submitMetrics).not.toHaveBeenCalled()
+  })
+
   it('should warn when test ids look nondeterministic', async () => {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <testsuites time="1.0">

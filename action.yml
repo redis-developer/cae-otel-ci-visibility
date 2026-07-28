@@ -33,6 +33,14 @@ inputs:
       bounded value like '8.4' — never a run id, timestamp, or other run-varying
       value, which would mint new metric series every run.
     required: false
+  server-version-allowlist:
+    description: >-
+      Comma-separated list of server versions to emit metrics for, matched
+      exactly against the server-version input. Empty (default) emits for any
+      server version. Use it to keep the tracked set bounded when the CI matrix
+      includes short-lived versions (release candidates, previews) you don't
+      want to monitor — their jobs run tests but upload nothing.
+    required: false
 
 runs:
   using: node24
