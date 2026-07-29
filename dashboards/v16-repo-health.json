@@ -250,7 +250,7 @@
         "definition": "label_values(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\"},test_id)",
         "hide": "dontHide",
         "includeAll": false,
-        "label": "Test ID",
+        "label": "Test name",
         "multi": true,
         "name": "test_id",
         "options": [],
@@ -1006,13 +1006,16 @@
                     },
                     "renameByName": {
                       "Time": "",
-                      "Value #current": "recent median",
+                      "Value #current": "typical (recent)",
                       "Value #last_run": "last run",
-                      "Value #median": "baseline median",
-                      "Value #samples": "samples",
+                      "Value #median": "typical (baseline)",
+                      "Value #samples": "runs counted",
                       "test_id": "test id",
                       "vcs_repository_name": "repository",
-                      "server_version": "server version"
+                      "server_version": "server version",
+                      "abs change": "change (s)",
+                      "rel change": "change (%)",
+                      "is regression": "verdict"
                     }
                   }
                 }
@@ -1056,7 +1059,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "is regression"
+                    "options": "verdict"
                   },
                   "properties": [
                     {
@@ -1136,7 +1139,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "rel change"
+                    "options": "change (%)"
                   },
                   "properties": [
                     {
@@ -1167,7 +1170,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "samples"
+                    "options": "runs counted"
                   },
                   "properties": [
                     {
@@ -1183,7 +1186,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "abs change"
+                    "options": "change (s)"
                   },
                   "properties": [
                     {
@@ -1242,7 +1245,7 @@
               "sortBy": [
                 {
                   "desc": true,
-                  "displayName": "recent median"
+                  "displayName": "typical (recent)"
                 }
               ]
             }
@@ -1641,13 +1644,16 @@
                     },
                     "renameByName": {
                       "Time": "",
-                      "Value #current": "recent median",
+                      "Value #current": "typical (recent)",
                       "Value #last_run": "last run",
-                      "Value #median": "baseline median",
-                      "Value #samples": "samples",
+                      "Value #median": "typical (baseline)",
+                      "Value #samples": "runs counted",
                       "test_id": "test id",
                       "vcs_repository_name": "repository",
-                      "server_version": "server version"
+                      "server_version": "server version",
+                      "abs change": "change (s)",
+                      "rel change": "change (%)",
+                      "is regression": "verdict"
                     }
                   }
                 }
@@ -1658,7 +1664,7 @@
         "description": "The 100 tests that changed most against their own history (before a baseline exists: the slowest). Click a test name to add it to the timeline at the bottom.",
         "id": 6,
         "links": [],
-        "title": "Top 100 movers vs their own history",
+        "title": "Tests that changed the most (recent vs baseline)",
         "vizConfig": {
           "group": "table",
           "kind": "VizConfig",
@@ -1691,7 +1697,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "is regression"
+                    "options": "verdict"
                   },
                   "properties": [
                     {
@@ -1771,7 +1777,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "rel change"
+                    "options": "change (%)"
                   },
                   "properties": [
                     {
@@ -1802,7 +1808,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "samples"
+                    "options": "runs counted"
                   },
                   "properties": [
                     {
@@ -1818,7 +1824,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "abs change"
+                    "options": "change (s)"
                   },
                   "properties": [
                     {
@@ -1877,7 +1883,7 @@
               "sortBy": [
                 {
                   "desc": true,
-                  "displayName": "rel change"
+                  "displayName": "change (%)"
                 }
               ]
             }
@@ -2391,13 +2397,16 @@
                     },
                     "renameByName": {
                       "Time": "",
-                      "Value #current": "recent median",
+                      "Value #current": "typical (recent)",
                       "Value #last_run": "last run",
-                      "Value #median": "baseline median",
-                      "Value #samples": "samples",
+                      "Value #median": "typical (baseline)",
+                      "Value #samples": "runs counted",
                       "test_id": "test id",
                       "vcs_repository_name": "repository",
-                      "server_version": "server version"
+                      "server_version": "server version",
+                      "abs change": "change (s)",
+                      "rel change": "change (%)",
+                      "is regression": "verdict"
                     }
                   }
                 }
@@ -2441,7 +2450,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "is regression"
+                    "options": "verdict"
                   },
                   "properties": [
                     {
@@ -2512,7 +2521,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "rel change"
+                    "options": "change (%)"
                   },
                   "properties": [
                     {
@@ -2543,7 +2552,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "samples"
+                    "options": "runs counted"
                   },
                   "properties": [
                     {
@@ -2559,7 +2568,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "abs change"
+                    "options": "change (s)"
                   },
                   "properties": [
                     {
@@ -2618,7 +2627,459 @@
               "sortBy": [
                 {
                   "desc": true,
-                  "displayName": "rel change"
+                  "displayName": "change (%)"
+                }
+              ]
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-9": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max(\n    sum by (server_version) (last_over_time(cae_v16_test_run_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[1d]))\n  / sum by (server_version) (last_over_time(cae_v16_test_run_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[1d] offset 21d))\n)",
+                      "format": "time_series",
+                      "instant": true,
+                      "legendFormat": "vs 3 weeks ago",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "time_vs_3w"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "This repository's total CI test time now compared with three weeks ago; the worst server version is shown (per-version lines live on the Trends board). 1.00 means unchanged, 1.10 means 10% slower. Consistently above 1 means the whole suite is slowly getting slower. Shows — until three weeks of history exists.",
+        "id": 9,
+        "links": [],
+        "title": "Test time vs 3 weeks ago",
+        "vizConfig": {
+          "group": "stat",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "suffix:×",
+                "decimals": 2,
+                "noValue": "—"
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": ["lastNotNull"],
+                "fields": "",
+                "values": false
+              },
+              "showPercentChange": false,
+              "textMode": "auto",
+              "wideLayout": true
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-10": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d]))\nand topk(50,\n(\n    (max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d])))\n  / (clamp_min(max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d] offset 21d)), 0.05))\n)\nand\n(\n  (max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d]))) - (max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d] offset 21d)))\n  > 0.25\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "current"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d] offset 21d))\nand topk(50,\n(\n    (max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d])))\n  / (clamp_min(max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d] offset 21d)), 0.05))\n)\nand\n(\n  (max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d]))) - (max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d] offset 21d)))\n  > 0.25\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "median"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (count_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d] offset 21d))\nand topk(50,\n(\n    (max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d])))\n  / (clamp_min(max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d] offset 21d)), 0.05))\n)\nand\n(\n  (max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d]))) - (max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d] offset 21d)))\n  > 0.25\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "samples"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": true,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "clamp_min(max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d] offset 21d)), 0.05)\nand topk(50,\n(\n    (max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d])))\n  / (clamp_min(max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d] offset 21d)), 0.05))\n)\nand\n(\n  (max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d]))) - (max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d] offset 21d)))\n  > 0.25\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "median_c"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": [
+              {
+                "group": "merge",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {}
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "times slower",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #current"
+                        }
+                      },
+                      "operator": "/",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #median_c"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "organize",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "excludeByName": {
+                      "Time": true,
+                      "Value #median_c": true
+                    },
+                    "includeByName": {},
+                    "indexByName": {
+                      "test_id": 0,
+                      "server_version": 1,
+                      "Value #current": 2,
+                      "Value #median": 3,
+                      "times slower": 4,
+                      "Value #samples": 5,
+                      "vcs_repository_name": 6,
+                      "Time": 7
+                    },
+                    "renameByName": {
+                      "Time": "",
+                      "Value #current": "typical (this week)",
+                      "Value #median": "typical (3 weeks ago)",
+                      "Value #samples": "runs counted",
+                      "test_id": "test id",
+                      "vcs_repository_name": "repository",
+                      "server_version": "server version"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "description": "Each test's typical duration this week compared with three weeks ago, worst 50 shown (only slowdowns bigger than a quarter of a second). Catches tests that got slower a little at a time — the table above compares against a recent baseline, which drifts along with gradual slowdowns and never alarms. \"runs counted\" is how many runs the three-weeks-ago week had. Click a test name to add it to the timeline at the bottom. Fills in once a month of history exists; '—' until then.",
+        "id": 10,
+        "links": [],
+        "title": "Tests gradually getting slower (this week vs 3 weeks ago)",
+        "vizConfig": {
+          "group": "table",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "custom": {
+                  "align": "auto",
+                  "cellOptions": {
+                    "type": "auto"
+                  },
+                  "footer": {
+                    "reducers": []
+                  },
+                  "inspect": false
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "s",
+                "noValue": "—"
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "test id"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.width",
+                      "value": 450
+                    },
+                    {
+                      "id": "links",
+                      "value": [
+                        {
+                          "title": "Add to timeline selection",
+                          "url": "?${__url_time_range}&${repository:queryparam}&${server_version:queryparam}&${branch:queryparam}&${test_id:queryparam}&var-test_id=${__value.raw}"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "repository"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.width",
+                      "value": 250
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "server version"
+                  },
+                  "properties": [
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "type": "special",
+                          "options": {
+                            "match": "empty",
+                            "result": {
+                              "text": "—",
+                              "index": 0
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "times slower"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "suffix:×"
+                    },
+                    {
+                      "id": "decimals",
+                      "value": 2
+                    },
+                    {
+                      "id": "custom.width",
+                      "value": 145
+                    },
+                    {
+                      "id": "custom.cellOptions",
+                      "value": {
+                        "type": "color-text"
+                      }
+                    },
+                    {
+                      "id": "thresholds",
+                      "value": {
+                        "mode": "absolute",
+                        "steps": [
+                          {
+                            "color": "text",
+                            "value": 0
+                          },
+                          {
+                            "color": "yellow",
+                            "value": 1.15
+                          },
+                          {
+                            "color": "red",
+                            "value": 1.3
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "type": "special",
+                          "options": {
+                            "match": "null+nan",
+                            "result": {
+                              "text": "—",
+                              "index": 0
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "runs counted"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "none"
+                    },
+                    {
+                      "id": "custom.width",
+                      "value": 120
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "cellHeight": "sm",
+              "footer": {
+                "countRows": false,
+                "enablePagination": true,
+                "fields": "",
+                "reducer": [],
+                "show": false
+              },
+              "frameIndex": 0,
+              "showHeader": true,
+              "sortBy": [
+                {
+                  "desc": true,
+                  "displayName": "times slower"
                 }
               ]
             }
@@ -2640,7 +3101,7 @@
               "name": "panel-1"
             },
             "height": 5,
-            "width": 6,
+            "width": 5,
             "x": 0,
             "y": 0
           }
@@ -2653,8 +3114,8 @@
               "name": "panel-2"
             },
             "height": 5,
-            "width": 6,
-            "x": 6,
+            "width": 5,
+            "x": 5,
             "y": 0
           }
         },
@@ -2666,8 +3127,8 @@
               "name": "panel-3"
             },
             "height": 5,
-            "width": 6,
-            "x": 12,
+            "width": 5,
+            "x": 10,
             "y": 0
           }
         },
@@ -2679,8 +3140,8 @@
               "name": "panel-4"
             },
             "height": 5,
-            "width": 6,
-            "x": 18,
+            "width": 5,
+            "x": 15,
             "y": 0
           }
         },
@@ -2720,7 +3181,7 @@
             "height": 10,
             "width": 24,
             "x": 0,
-            "y": 29
+            "y": 41
           }
         },
         {
@@ -2733,7 +3194,33 @@
             "height": 9,
             "width": 24,
             "x": 0,
-            "y": 39
+            "y": 51
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-9"
+            },
+            "x": 20,
+            "y": 0,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-10"
+            },
+            "x": 0,
+            "y": 29,
+            "width": 24,
+            "height": 12
           }
         }
       ]

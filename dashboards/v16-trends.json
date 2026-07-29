@@ -127,10 +127,10 @@
                     "spec": {
                       "editorMode": "code",
                       "exemplar": false,
-                      "expr": "count(\n  last_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n)",
+                      "expr": "count(\n  count by (test_id, vcs_repository_name) (\n    last_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n  )\n)",
                       "format": "time_series",
                       "instant": true,
-                      "legendFormat": "tests",
+                      "legendFormat": "unique tests",
                       "range": false
                     },
                     "version": "v0"
@@ -143,10 +143,10 @@
             "transformations": []
           }
         },
-        "description": "How many test + server-version combinations are currently being tracked.",
+        "description": "Distinct test names that reported in the selected recent window. A test that runs against several server versions is counted once here — the \"Tests × server versions\" panel counts every combination separately.",
         "id": 2,
         "links": [],
-        "title": "Tests tracked",
+        "title": "Unique tests",
         "vizConfig": {
           "group": "stat",
           "kind": "VizConfig",
@@ -212,7 +212,7 @@
                       "expr": "count(last_over_time(cae_v16_test_duration_seconds[30d]))\nor vector(0)",
                       "format": "time_series",
                       "instant": true,
-                      "legendFormat": "series catalog (30d)",
+                      "legendFormat": "tests × versions (30d)",
                       "range": false
                     },
                     "version": "v0"
@@ -225,10 +225,10 @@
             "transformations": []
           }
         },
-        "description": "All distinct series seen in the last 30 days - tracks fleet size (tests x repos x server versions).",
+        "description": "Every combination of test name and server version seen in the last 30 days; each combination is tracked (and billed) separately. Healthy: roughly Unique tests × number of server versions. If this number grows while Unique tests stays flat, old names keep being replaced by new ones — see the \"Are test names stable?\" panels below.",
         "id": 10,
         "links": [],
-        "title": "Series catalog (30d)",
+        "title": "Tests × server versions (30 days)",
         "vizConfig": {
           "group": "stat",
           "kind": "VizConfig",
@@ -312,7 +312,7 @@
         "description": "Total time a full test run takes, per repository and server version. A rising line means CI is getting slower overall, even if no single test trips the regression alarm.",
         "id": 6,
         "links": [],
-        "title": "Total suite duration per repo",
+        "title": "Total test time per repo",
         "vizConfig": {
           "group": "timeseries",
           "kind": "VizConfig",
@@ -565,7 +565,7 @@
         "description": "Tests that appeared recently and have no earlier history (capped at 200). Expect a wave when a repo or server version is first onboarded.",
         "id": 8,
         "links": [],
-        "title": "New tests (seen in [$recent], absent from baseline)",
+        "title": "New tests (first seen in the last $recent)",
         "vizConfig": {
           "group": "table",
           "kind": "VizConfig",
@@ -740,7 +740,7 @@
                       "expr": "count(last_over_time(cae_v16_test_duration_seconds[20m]))\nor vector(0)",
                       "format": "time_series",
                       "instant": true,
-                      "legendFormat": "active now (20m billed window)",
+                      "legendFormat": "billed now (20m window)",
                       "range": false
                     },
                     "version": "v0"
@@ -753,10 +753,10 @@
             "transformations": []
           }
         },
-        "description": "Series that received data in the last 20 minutes - the number Grafana Cloud billing sees at this instant.",
+        "description": "Metric series that reported within the last 20 minutes — what Grafana Cloud counts as active for billing. Near zero between CI runs is expected and keeps the bill low.",
         "id": 11,
         "links": [],
-        "title": "Active series (billed window)",
+        "title": "Metric series billed now",
         "vizConfig": {
           "group": "stat",
           "kind": "VizConfig",
@@ -924,7 +924,7 @@
         "description": "Tests that gained the most time compared with their own history - biggest absolute slowdowns across the fleet. Click a bar to open the test in the Repo Health drilldown.",
         "id": 4,
         "links": [],
-        "title": "Top 20 biggest regressions vs baseline median",
+        "title": "Top 20 biggest slowdowns (recent vs baseline)",
         "vizConfig": {
           "group": "bargauge",
           "kind": "VizConfig",
@@ -1007,10 +1007,10 @@
             "transformations": []
           }
         },
-        "description": "Tests that got faster compared with their own history - the other side of the movers panel. The value is time saved per run. Click a bar to open the test in the Repo Health drilldown.",
+        "description": "Tests that got faster compared with their own history - the other side of the slowdowns panel. The value is time saved per run. Click a bar to open the test in the Repo Health drilldown.",
         "id": 12,
         "links": [],
-        "title": "Top 20 improvements vs baseline median",
+        "title": "Top 20 biggest speed-ups (recent vs baseline)",
         "vizConfig": {
           "group": "bargauge",
           "kind": "VizConfig",
@@ -1588,6 +1588,469 @@
           "version": "13.2.0-29854286369"
         }
       }
+    },
+    "panel-17": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "  100 * sum by (vcs_repository_name, server_version) (\n    last_over_time(cae_v16_test_run_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[1d])\n  )\n/ sum by (vcs_repository_name, server_version) (\n    last_over_time(cae_v16_test_run_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[1d] offset 21d)\n  )\n- 100",
+                      "format": "time_series",
+                      "instant": false,
+                      "legendFormat": "{{vcs_repository_name}} · {{server_version}}",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "change_vs_3w"
+                }
+              }
+            ],
+            "queryOptions": {
+              "interval": "12h"
+            },
+            "transformations": []
+          }
+        },
+        "description": "Percent change of a repository's total CI test time compared with three weeks earlier, one line per server version. Hovering around 0% is healthy. A steady climb means the whole suite is getting slower little by little — the kind of creep no single-test alarm catches. Empty until three weeks of history exists.",
+        "id": 17,
+        "links": [],
+        "title": "Total test time: change vs 3 weeks ago",
+        "vizConfig": {
+          "group": "timeseries",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 0,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "always",
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "percent"
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-18": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "",
+        "id": 18,
+        "links": [],
+        "title": "",
+        "vizConfig": {
+          "group": "text",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {},
+              "overrides": []
+            },
+            "options": {
+              "content": "### Are test names stable?\n\nA test whose name embeds a run-varying value (a timestamp, a random id, a port) looks brand-new on every run: history never accumulates, baselines never mature, and every run adds paid metric series. The action warns about recognizable patterns when results are submitted; these panels watch for everything else by observing the names themselves.",
+              "mode": "markdown"
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-19": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "  count by (vcs_repository_name) (\n      max by (test_id, vcs_repository_name, server_version) (last_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[1d]))\n    unless\n      max by (test_id, vcs_repository_name, server_version) (last_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d] offset 1d))\n  )\nor\n  0 * count by (vcs_repository_name) (last_over_time(cae_v16_test_run_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[1d]))",
+                      "format": "time_series",
+                      "instant": false,
+                      "legendFormat": "{{vcs_repository_name}}",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "new_names"
+                }
+              }
+            ],
+            "queryOptions": {
+              "interval": "6h"
+            },
+            "transformations": []
+          }
+        },
+        "description": "How many test names appeared for the first time, per repository. Spikes right after merging new tests are normal. A line that never returns to zero means test names contain values that change on every run (timestamps, random ids) — each run then looks like a set of new tests. A repository's first days here show its whole test suite as new, which is accurate.",
+        "id": 19,
+        "links": [],
+        "title": "New test names per day",
+        "vizConfig": {
+          "group": "timeseries",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 0,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "always",
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "none"
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-20": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "  count by (vcs_repository_name) (\n      (sum by (test_id, vcs_repository_name, server_version) (count_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[7d])) == 1)\n    unless\n      max by (test_id, vcs_repository_name, server_version) (last_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[1d]))\n  )\nor\n  0 * count by (vcs_repository_name) (last_over_time(cae_v16_test_run_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[1d]))",
+                      "format": "time_series",
+                      "instant": false,
+                      "legendFormat": "{{vcs_repository_name}}",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "never_repeat"
+                }
+              }
+            ],
+            "queryOptions": {
+              "interval": "6h"
+            },
+            "transformations": []
+          }
+        },
+        "description": "Test names with exactly one recorded run in the last 7 days, ignoring tests added within the last day (a genuinely new test starts with one run). Healthy value: 0. A persistent count means names change between runs, so each name is seen exactly once and then never again.",
+        "id": 20,
+        "links": [],
+        "title": "Test names that never repeat",
+        "vizConfig": {
+          "group": "timeseries",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 0,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "always",
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "none"
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-21": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max(\n    count by (vcs_repository_name) (last_over_time(cae_v16_test_duration_seconds[30d]))\n  - count by (vcs_repository_name) (last_over_time(cae_v16_test_duration_seconds[3d]))\n)\nor vector(0)",
+                      "format": "time_series",
+                      "instant": true,
+                      "legendFormat": "name stability",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "stability"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "Test + server version combinations seen in the last 30 days but not in the last 3 days, worst repository shown (ignores the filters above). 0 means every name from the past month is still reporting — names are stable. A rising number means names keep being replaced: either tests were renamed or removed (fine, ages out within 30 days) or names change on every run (fix the test names).",
+        "id": 21,
+        "links": [],
+        "title": "Test name stability check",
+        "vizConfig": {
+          "group": "stat",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                },
+                "unit": "short"
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": ["lastNotNull"],
+                "fields": "",
+                "values": false
+              },
+              "showPercentChange": false,
+              "textMode": "value",
+              "wideLayout": true
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
     }
   },
   "layout": {
@@ -1746,7 +2209,7 @@
             },
             "x": 0,
             "y": 57,
-            "width": 12,
+            "width": 8,
             "height": 9
           }
         },
@@ -1757,9 +2220,9 @@
               "kind": "ElementReference",
               "name": "panel-7"
             },
-            "x": 12,
+            "x": 16,
             "y": 57,
-            "width": 12,
+            "width": 8,
             "height": 9
           }
         },
@@ -1787,6 +2250,71 @@
             "y": 66,
             "width": 8,
             "height": 9
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-17"
+            },
+            "x": 8,
+            "y": 57,
+            "width": 8,
+            "height": 9
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-18"
+            },
+            "x": 0,
+            "y": 75,
+            "width": 24,
+            "height": 3
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-19"
+            },
+            "x": 0,
+            "y": 78,
+            "width": 10,
+            "height": 8
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-20"
+            },
+            "x": 10,
+            "y": 78,
+            "width": 10,
+            "height": 8
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-21"
+            },
+            "x": 20,
+            "y": 78,
+            "width": 4,
+            "height": 8
           }
         }
       ]
@@ -1962,7 +2490,7 @@
         },
         "hide": "dontHide",
         "includeAll": false,
-        "label": "Recent window",
+        "label": "Recent window (what counts as \"now\")",
         "multi": false,
         "name": "recent",
         "options": [],
@@ -1981,7 +2509,7 @@
         },
         "hide": "dontHide",
         "includeAll": false,
-        "label": "Baseline window",
+        "label": "Baseline window (what counts as \"usual\")",
         "multi": false,
         "name": "baseline",
         "options": [],
@@ -2000,7 +2528,7 @@
         },
         "hide": "dontHide",
         "includeAll": false,
-        "label": "Regression ratio",
+        "label": "Slowdown threshold (x usual duration)",
         "multi": false,
         "name": "ratio",
         "options": [],

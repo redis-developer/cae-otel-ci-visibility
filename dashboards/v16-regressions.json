@@ -594,13 +594,16 @@
                     },
                     "renameByName": {
                       "Time": "",
-                      "Value #current": "recent median",
+                      "Value #current": "typical (recent)",
                       "Value #last_run": "last run",
-                      "Value #median": "baseline median",
-                      "Value #samples": "samples",
+                      "Value #median": "typical (baseline)",
+                      "Value #samples": "runs counted",
                       "test_id": "test id",
                       "vcs_repository_name": "repository",
-                      "server_version": "server version"
+                      "server_version": "server version",
+                      "abs change": "change (s)",
+                      "rel change": "change (%)",
+                      "is regression": "verdict"
                     }
                   }
                 }
@@ -608,10 +611,10 @@
             ]
           }
         },
-        "description": "The 200 tests that changed most against their own history (before a baseline exists: the 200 slowest), one row per test per server version. The cap keeps the page fast at any fleet size - the full inventory is browsable per test via the timeline drill-down, and everything that regressed is always in the table below regardless of rank.\n\n- recent median: typical duration over the last few days (middle value - one unlucky run does not skew it)\n- last run: most recent run, for reference\n- baseline median: what was typical before that\n- abs / rel change: how much slower (+) or faster (-) vs baseline\n- samples: how many past measurements back the baseline - be skeptical of small ones\n\nREGRESSION requires all three: more than the threshold slower, at least +1 second, and 10+ past measurements.",
+        "description": "The 200 tests that changed most against their own history (before a baseline exists: the 200 slowest), one row per test per server version. The cap keeps the page fast at any fleet size - the full inventory is browsable per test via the timeline drill-down, and everything that regressed is always in the table below regardless of rank.\n\n- typical (recent): typical duration over the last few days (middle value - one unlucky run does not skew it)\n- last run: most recent run, for reference\n- typical (baseline): what was typical before that\n- change (s) / change (%): how much slower (+) or faster (-) vs baseline\n- runs counted: how many past measurements back the baseline - be skeptical of small ones\n\nREGRESSION requires all three: more than the threshold slower, at least +1 second, and 10+ past measurements.",
         "id": 3,
         "links": [],
-        "title": "Top 200 movers vs their own history ($branch)",
+        "title": "Top 200 tests that changed the most ($branch)",
         "vizConfig": {
           "group": "table",
           "kind": "VizConfig",
@@ -644,7 +647,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "is regression"
+                    "options": "verdict"
                   },
                   "properties": [
                     {
@@ -725,7 +728,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "rel change"
+                    "options": "change (%)"
                   },
                   "properties": [
                     {
@@ -756,7 +759,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "samples"
+                    "options": "runs counted"
                   },
                   "properties": [
                     {
@@ -772,7 +775,7 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "abs change"
+                    "options": "change (s)"
                   },
                   "properties": [
                     {
@@ -831,7 +834,7 @@
               "sortBy": [
                 {
                   "desc": true,
-                  "displayName": "rel change"
+                  "displayName": "change (%)"
                 }
               ]
             }
@@ -892,7 +895,7 @@
                     },
                     "renameByName": {
                       "Time": "",
-                      "Value #regressed": "x median (ratio)",
+                      "Value #regressed": "times slower",
                       "test_id": "test id",
                       "vcs_repository_name": "repository",
                       "server_version": "server version"
@@ -973,16 +976,20 @@
                 {
                   "matcher": {
                     "id": "byName",
-                    "options": "x median (ratio)"
+                    "options": "times slower"
                   },
                   "properties": [
                     {
                       "id": "unit",
-                      "value": "none"
+                      "value": "suffix:×"
                     },
                     {
                       "id": "custom.width",
                       "value": 150
+                    },
+                    {
+                      "id": "decimals",
+                      "value": 2
                     }
                   ]
                 }
@@ -1002,7 +1009,7 @@
               "sortBy": [
                 {
                   "desc": true,
-                  "displayName": "x median (ratio)"
+                  "displayName": "times slower"
                 }
               ]
             }
