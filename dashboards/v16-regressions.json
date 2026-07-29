@@ -1,0 +1,1257 @@
+{
+  "uid": "cae-v15-regressions",
+  "annotations": [
+    {
+      "kind": "AnnotationQuery",
+      "spec": {
+        "builtIn": true,
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "query": {
+          "datasource": {
+            "name": "-- Grafana --"
+          },
+          "group": "grafana",
+          "kind": "DataQuery",
+          "spec": {},
+          "version": "v0"
+        }
+      }
+    }
+  ],
+  "cursorSync": "Off",
+  "description": "Fleet-wide regression triage: how many tests are slower than they used to be, anywhere, and whether every repository is still reporting. No repository filter on purpose - for one repo's health and per-test drilldown use the Repo Health dashboard (linked in the top bar and from every test name).",
+  "editable": true,
+  "elements": {
+    "panel-1": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "count(\n  (\n      max by (test_id, vcs_repository_name, server_version) (\n        quantile_over_time(0.5, cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n      )\n    /\n      clamp_min(\n        max by (test_id, vcs_repository_name, server_version) (\n          quantile_over_time(0.5, cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n        ),\n        0.05\n      )\n  ) > $ratio\n  and\n  (\n      max by (test_id, vcs_repository_name, server_version) (\n        quantile_over_time(0.5, cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n      )\n    -\n      max by (test_id, vcs_repository_name, server_version) (\n        quantile_over_time(0.5, cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n      )\n  ) > 1\n  and\n    max by (test_id, vcs_repository_name, server_version) (\n      count_over_time(cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n    ) >= 10\n)\nor vector(0)",
+                      "format": "time_series",
+                      "instant": true,
+                      "legendFormat": "regressed",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "regressed_count"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "How many tests across ALL repositories are slower right now than they used to be. A test counts only if all three are true: more than the chosen threshold slower than its usual duration, at least 1 second of real slowdown, and 10+ past measurements. 0 means everything is running at its normal speed.",
+        "id": 1,
+        "links": [],
+        "title": "Regressed tests now",
+        "vizConfig": {
+          "group": "stat",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                },
+                "unit": "short"
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": ["lastNotNull"],
+                "fields": "",
+                "values": false
+              },
+              "showPercentChange": false,
+              "textMode": "auto",
+              "wideLayout": true
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-2": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "(\n  time()\n  -\n  max by (vcs_repository_name) (\n    timestamp(\n      last_over_time(cae_v16_test_run_duration_seconds{vcs_repository_ref_name=~\"$branch\"}[$baseline])\n    )\n  )\n) / 3600",
+                      "format": "time_series",
+                      "instant": true,
+                      "legendFormat": "{{vcs_repository_name}}",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "hours_since_last_run"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "How long ago each repository last reported test results. If one grows beyond a day or two, that repo's CI or metrics reporting is probably broken - fix it before trusting its rows elsewhere on this board.",
+        "id": 2,
+        "links": [],
+        "title": "Hours since last run (per repo)",
+        "vizConfig": {
+          "group": "bargauge",
+          "kind": "VizConfig",
+          "version": "13.2.0-29854286369",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "decimals": 1,
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 24
+                    },
+                    {
+                      "color": "red",
+                      "value": 96
+                    }
+                  ]
+                },
+                "unit": "h"
+              },
+              "overrides": []
+            },
+            "options": {
+              "displayMode": "basic",
+              "orientation": "horizontal",
+              "namePlacement": "auto",
+              "maxVizHeight": 32,
+              "minVizHeight": 16,
+              "minVizWidth": 8,
+              "showUnfilled": true,
+              "sizing": "auto",
+              "valueMode": "color",
+              "reduceOptions": {
+                "calcs": ["lastNotNull"],
+                "fields": "",
+                "values": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "panel-3": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5, \n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\nand\ntopk(200,\n  (\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n  -\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)\n  )\n  or\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "current"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (\n  last_over_time(\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\nand\ntopk(200,\n  (\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n  -\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)\n  )\n  or\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "last_run"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)\nand\ntopk(200,\n  (\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n  -\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)\n  )\n  or\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "median"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (\n  count_over_time(\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)\nand\ntopk(200,\n  (\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n  -\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)\n  )\n  or\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "samples"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": true,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "clamp_min(\n  max by (test_id, vcs_repository_name, server_version) (\n    quantile_over_time(0.5,\n      cae_v16_test_duration_seconds{\n          vcs_repository_ref_name=~\"$branch\"\n      }[$baseline] offset $recent\n    )\n  ),\n  0.05\n)\nand\ntopk(200,\n  (\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n  -\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)\n  )\n  or\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "median_c"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": [
+              {
+                "group": "merge",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {}
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "abs change",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #current"
+                        }
+                      },
+                      "operator": "-",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #median"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "rel change",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "abs change"
+                        }
+                      },
+                      "operator": "/",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #median_c"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "median x ratio",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #median_c"
+                        }
+                      },
+                      "operator": "*",
+                      "right": {
+                        "fixed": "$ratio"
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "ratio gate",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #current"
+                        }
+                      },
+                      "operator": ">",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "median x ratio"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "abs gate",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "abs change"
+                        }
+                      },
+                      "operator": ">",
+                      "right": {
+                        "fixed": "1"
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "samples gate",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #samples"
+                        }
+                      },
+                      "operator": ">=",
+                      "right": {
+                        "fixed": "10"
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "ratio+abs gates",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "ratio gate"
+                        }
+                      },
+                      "operator": "*",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "abs gate"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "is regression",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "ratio+abs gates"
+                        }
+                      },
+                      "operator": "*",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "samples gate"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "organize",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "excludeByName": {
+                      "Time": true,
+                      "Value #median_c": true,
+                      "abs gate": true,
+                      "median x ratio": true,
+                      "ratio gate": true,
+                      "ratio+abs gates": true,
+                      "samples gate": true
+                    },
+                    "includeByName": {},
+                    "indexByName": {
+                      "test_id": 0,
+                      "is regression": 1,
+                      "server_version": 2,
+                      "Value #current": 3,
+                      "Value #last_run": 4,
+                      "Value #median": 5,
+                      "abs change": 6,
+                      "rel change": 7,
+                      "Value #samples": 8,
+                      "vcs_repository_name": 9,
+                      "Time": 10
+                    },
+                    "renameByName": {
+                      "Time": "",
+                      "Value #current": "recent median",
+                      "Value #last_run": "last run",
+                      "Value #median": "baseline median",
+                      "Value #samples": "samples",
+                      "test_id": "test id",
+                      "vcs_repository_name": "repository",
+                      "server_version": "server version"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "description": "The 200 tests that changed most against their own history (before a baseline exists: the 200 slowest), one row per test per server version. The cap keeps the page fast at any fleet size - the full inventory is browsable per test via the timeline drill-down, and everything that regressed is always in the table below regardless of rank.\n\n- recent median: typical duration over the last few days (middle value - one unlucky run does not skew it)\n- last run: most recent run, for reference\n- baseline median: what was typical before that\n- abs / rel change: how much slower (+) or faster (-) vs baseline\n- samples: how many past measurements back the baseline - be skeptical of small ones\n\nREGRESSION requires all three: more than the threshold slower, at least +1 second, and 10+ past measurements.",
+        "id": 3,
+        "links": [],
+        "title": "Top 200 movers vs their own history ($branch)",
+        "vizConfig": {
+          "group": "table",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "custom": {
+                  "align": "auto",
+                  "cellOptions": {
+                    "type": "auto"
+                  },
+                  "footer": {
+                    "reducers": []
+                  },
+                  "inspect": false
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "s",
+                "noValue": "—"
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "is regression"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "none"
+                    },
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "options": {
+                            "0": {
+                              "color": "green",
+                              "index": 0,
+                              "text": "✅ OK"
+                            },
+                            "1": {
+                              "color": "red",
+                              "index": 1,
+                              "text": "🔴 REGRESSION"
+                            }
+                          },
+                          "type": "value"
+                        },
+                        {
+                          "options": {
+                            "match": "null+nan",
+                            "result": {
+                              "color": "green",
+                              "index": 2,
+                              "text": "✅ OK"
+                            }
+                          },
+                          "type": "special"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "custom.width",
+                      "value": 140
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "test id"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.width",
+                      "value": 450
+                    },
+                    {
+                      "id": "links",
+                      "value": [
+                        {
+                          "targetBlank": true,
+                          "title": "Open in Repo Health drilldown",
+                          "url": "/d/bos8jzw/repo-health-test-drilldown-v16?var-test_id=${__value.raw}&var-repository=${__data.fields.repository}&${server_version:queryparam}&${branch:queryparam}"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "repository"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.width",
+                      "value": 250
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "rel change"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "percentunit"
+                    },
+                    {
+                      "id": "custom.width",
+                      "value": 145
+                    },
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "type": "special",
+                          "options": {
+                            "match": "null+nan",
+                            "result": {
+                              "text": "—",
+                              "index": 0
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "samples"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "none"
+                    },
+                    {
+                      "id": "custom.width",
+                      "value": 110
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "abs change"
+                  },
+                  "properties": [
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "type": "special",
+                          "options": {
+                            "match": "null+nan",
+                            "result": {
+                              "text": "—",
+                              "index": 0
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "server version"
+                  },
+                  "properties": [
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "type": "special",
+                          "options": {
+                            "match": "empty",
+                            "result": {
+                              "text": "—",
+                              "index": 0
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "cellHeight": "sm",
+              "footer": {
+                "countRows": false,
+                "enablePagination": true,
+                "fields": "",
+                "reducer": [],
+                "show": false
+              },
+              "frameIndex": 0,
+              "showHeader": true,
+              "sortBy": [
+                {
+                  "desc": true,
+                  "displayName": "rel change"
+                }
+              ]
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-4": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "(\n    max by (test_id, vcs_repository_name, server_version) (\n      quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_ref_name=~\"$branch\"}[$recent])\n    )\n  /\n    clamp_min(\n      max by (test_id, vcs_repository_name, server_version) (\n        quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n      ),\n      0.05\n    )\n) > $ratio\nand\n(\n    max by (test_id, vcs_repository_name, server_version) (\n      quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_ref_name=~\"$branch\"}[$recent])\n    )\n  -\n    max by (test_id, vcs_repository_name, server_version) (\n      quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n    )\n) > 1\nand\n  max by (test_id, vcs_repository_name, server_version) (\n    count_over_time(cae_v16_test_duration_seconds{vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n  ) >= 10",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "regressed"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": [
+              {
+                "group": "organize",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "excludeByName": {
+                      "Time": true
+                    },
+                    "includeByName": {},
+                    "indexByName": {
+                      "test_id": 0,
+                      "vcs_repository_name": 1,
+                      "server_version": 2,
+                      "Value #regressed": 3,
+                      "Time": 4
+                    },
+                    "renameByName": {
+                      "Time": "",
+                      "Value #regressed": "x median (ratio)",
+                      "test_id": "test id",
+                      "vcs_repository_name": "repository",
+                      "server_version": "server version"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "description": "Only the tests that currently pass the regression rule - more than the threshold slower than their own history, at least +1 second, with 10+ past measurements. The value shows how many times slower the test is now compared with its usual duration (2.0 = twice as slow). An empty table means no regressions anywhere.",
+        "id": 4,
+        "links": [],
+        "title": "Regressions right now - all repositories",
+        "vizConfig": {
+          "group": "table",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "custom": {
+                  "align": "auto",
+                  "cellOptions": {
+                    "type": "auto"
+                  },
+                  "footer": {
+                    "reducers": []
+                  },
+                  "inspect": false
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "s",
+                "noValue": "—"
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "test id"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.width",
+                      "value": 450
+                    },
+                    {
+                      "id": "links",
+                      "value": [
+                        {
+                          "targetBlank": true,
+                          "title": "Open in Repo Health drilldown",
+                          "url": "/d/bos8jzw/repo-health-test-drilldown-v16?var-test_id=${__value.raw}&var-repository=${__data.fields.repository}&${server_version:queryparam}&${branch:queryparam}"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "repository"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.width",
+                      "value": 250
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "x median (ratio)"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "none"
+                    },
+                    {
+                      "id": "custom.width",
+                      "value": 150
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "cellHeight": "sm",
+              "footer": {
+                "countRows": false,
+                "enablePagination": true,
+                "fields": "",
+                "reducer": [],
+                "show": false
+              },
+              "frameIndex": 0,
+              "showHeader": true,
+              "sortBy": [
+                {
+                  "desc": true,
+                  "displayName": "x median (ratio)"
+                }
+              ]
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    }
+  },
+  "layout": {
+    "kind": "GridLayout",
+    "spec": {
+      "items": [
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-1"
+            },
+            "height": 4,
+            "width": 6,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-2"
+            },
+            "height": 4,
+            "width": 18,
+            "x": 6,
+            "y": 0
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-3"
+            },
+            "height": 16,
+            "width": 24,
+            "x": 0,
+            "y": 4
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-4"
+            },
+            "height": 10,
+            "width": 24,
+            "x": 0,
+            "y": 20
+          }
+        }
+      ]
+    }
+  },
+  "links": [
+    {
+      "title": "Trends & Timelines",
+      "type": "link",
+      "icon": "dashboard",
+      "url": "/d/bocj686",
+      "tooltip": "",
+      "asDropdown": false,
+      "targetBlank": false,
+      "includeVars": false,
+      "keepTime": true,
+      "tags": []
+    },
+    {
+      "title": "Repo Health drilldown",
+      "type": "link",
+      "icon": "dashboard",
+      "url": "/d/bos8jzw",
+      "tooltip": "",
+      "asDropdown": false,
+      "targetBlank": false,
+      "includeVars": false,
+      "keepTime": true,
+      "tags": []
+    }
+  ],
+  "liveNow": false,
+  "preload": false,
+  "tags": ["tests", "performance", "regression", "v16"],
+  "timeSettings": {
+    "autoRefresh": "15m",
+    "autoRefreshIntervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "fiscalYearStartMonth": 0,
+    "from": "now-7d",
+    "hideTimepicker": false,
+    "timezone": "browser",
+    "to": "now"
+  },
+  "title": "Test Regressions (v16)",
+  "variables": [
+    {
+      "kind": "DatasourceVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "grafanacloud-benchmarksrediscom-prom",
+          "value": "grafanacloud-prom"
+        },
+        "hide": "hideVariable",
+        "includeAll": false,
+        "label": "Datasource",
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "pluginId": "prometheus",
+        "refresh": "onDashboardLoad",
+        "regex": "",
+        "skipUrlSync": false
+      }
+    },
+    {
+      "kind": "CustomVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "master",
+          "value": "master"
+        },
+        "hide": "dontHide",
+        "includeAll": false,
+        "label": "Branch",
+        "multi": false,
+        "name": "branch",
+        "options": [],
+        "query": "master,main",
+        "skipUrlSync": false,
+        "valuesFormat": "csv"
+      }
+    },
+    {
+      "kind": "QueryVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "definition": "label_values(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\"},server_version)",
+        "hide": "dontHide",
+        "includeAll": true,
+        "label": "Server version",
+        "multi": true,
+        "name": "server_version",
+        "options": [],
+        "query": {
+          "datasource": {
+            "name": "${datasource}"
+          },
+          "group": "prometheus",
+          "kind": "DataQuery",
+          "spec": {
+            "qryType": 1,
+            "query": "label_values(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\"},server_version)"
+          },
+          "version": "v0"
+        },
+        "refresh": "onTimeRangeChanged",
+        "regex": "",
+        "regexApplyTo": "value",
+        "skipUrlSync": false,
+        "sort": "alphabeticalAsc",
+        "allValue": ".*"
+      }
+    },
+    {
+      "kind": "CustomVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "3d",
+          "value": "3d"
+        },
+        "hide": "dontHide",
+        "includeAll": false,
+        "label": "Recent window (what counts as \"now\")",
+        "multi": false,
+        "name": "recent",
+        "options": [],
+        "query": "1d,2d,3d,7d",
+        "skipUrlSync": false,
+        "valuesFormat": "csv"
+      }
+    },
+    {
+      "kind": "CustomVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "14d",
+          "value": "14d"
+        },
+        "hide": "dontHide",
+        "includeAll": false,
+        "label": "Baseline window (what counts as \"usual\")",
+        "multi": false,
+        "name": "baseline",
+        "options": [],
+        "query": "7d,14d,30d",
+        "skipUrlSync": false,
+        "valuesFormat": "csv"
+      }
+    },
+    {
+      "kind": "CustomVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "1.5",
+          "value": "1.5"
+        },
+        "hide": "dontHide",
+        "includeAll": false,
+        "label": "Slowdown threshold (x usual duration)",
+        "multi": false,
+        "name": "ratio",
+        "options": [],
+        "query": "1.25,1.5,2,5",
+        "skipUrlSync": false,
+        "valuesFormat": "csv"
+      }
+    }
+  ]
+}

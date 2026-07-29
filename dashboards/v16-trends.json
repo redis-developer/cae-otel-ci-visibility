@@ -1,0 +1,2013 @@
+{
+  "uid": "cae-v15-trends",
+  "annotations": [
+    {
+      "kind": "AnnotationQuery",
+      "spec": {
+        "builtIn": true,
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "query": {
+          "datasource": {
+            "name": "-- Grafana --"
+          },
+          "group": "grafana",
+          "kind": "DataQuery",
+          "spec": {},
+          "version": "v0"
+        }
+      }
+    }
+  ],
+  "cursorSync": "Off",
+  "description": "Fleet-level view: how test suites are trending per repository and server version, which tests appeared or vanished, and whether our metrics storage stays healthy. For per-test inspection use the Repo Health dashboard.",
+  "editable": true,
+  "elements": {
+    "panel-1": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "count(\n  count by (vcs_repository_name) (\n    last_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n  )\n)",
+                      "format": "time_series",
+                      "instant": true,
+                      "legendFormat": "repos",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "repos_reporting"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "How many repositories sent test results recently.",
+        "id": 1,
+        "links": [],
+        "title": "Repos reporting",
+        "vizConfig": {
+          "group": "stat",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "short"
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": ["lastNotNull"],
+                "fields": "",
+                "values": false
+              },
+              "showPercentChange": false,
+              "textMode": "auto",
+              "wideLayout": true
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-2": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "count(\n  last_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n)",
+                      "format": "time_series",
+                      "instant": true,
+                      "legendFormat": "tests",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "tests_tracked"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "How many test + server-version combinations are currently being tracked.",
+        "id": 2,
+        "links": [],
+        "title": "Tests tracked",
+        "vizConfig": {
+          "group": "stat",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "short"
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": ["lastNotNull"],
+                "fields": "",
+                "values": false
+              },
+              "showPercentChange": false,
+              "textMode": "auto",
+              "wideLayout": true
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-10": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "count(last_over_time(cae_v16_test_duration_seconds[30d]))\nor vector(0)",
+                      "format": "time_series",
+                      "instant": true,
+                      "legendFormat": "series catalog (30d)",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "catalog"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "All distinct series seen in the last 30 days - tracks fleet size (tests x repos x server versions).",
+        "id": 10,
+        "links": [],
+        "title": "Series catalog (30d)",
+        "vizConfig": {
+          "group": "stat",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "short"
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": ["lastNotNull"],
+                "fields": "",
+                "values": false
+              },
+              "showPercentChange": false,
+              "textMode": "value",
+              "wideLayout": true
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-6": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "sum by (vcs_repository_name, server_version) (\n  last_over_time(cae_v16_test_run_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[1d])\n)",
+                      "format": "time_series",
+                      "instant": false,
+                      "legendFormat": "{{vcs_repository_name}} {{server_version}}",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "suite_duration"
+                }
+              }
+            ],
+            "queryOptions": {
+              "interval": "1h"
+            },
+            "transformations": []
+          }
+        },
+        "description": "Total time a full test run takes, per repository and server version. A rising line means CI is getting slower overall, even if no single test trips the regression alarm.",
+        "id": 6,
+        "links": [],
+        "title": "Total suite duration per repo",
+        "vizConfig": {
+          "group": "timeseries",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 0,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "always",
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "s"
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-7": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "sum by (vcs_repository_name, server_version) (\n  last_over_time(cae_v16_test_run_tests{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[1d])\n)",
+                      "format": "time_series",
+                      "instant": false,
+                      "legendFormat": "{{vcs_repository_name}} {{server_version}}",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "test_count"
+                }
+              }
+            ],
+            "queryOptions": {
+              "interval": "1h"
+            },
+            "transformations": []
+          }
+        },
+        "description": "Number of tests per repository and server version. Jumps reveal suite growth; sustained climbing without new tests means unstable test names minting duplicate entries.",
+        "id": 7,
+        "links": [],
+        "title": "Test count per repo",
+        "vizConfig": {
+          "group": "timeseries",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 0,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "always",
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "short"
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-8": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "topk(200,\nmax by (test_id, vcs_repository_name, server_version) (\n  last_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n)\nunless\nmax by (test_id, vcs_repository_name, server_version) (\n  last_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "new_tests"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": [
+              {
+                "group": "organize",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "excludeByName": {
+                      "Time": true
+                    },
+                    "includeByName": {},
+                    "indexByName": {
+                      "Time": 3,
+                      "Value #new_tests": 2,
+                      "test_id": 0,
+                      "vcs_repository_name": 1
+                    },
+                    "renameByName": {
+                      "Time": "",
+                      "Value #new_tests": "duration",
+                      "test_id": "test id",
+                      "vcs_repository_name": "repository"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "description": "Tests that appeared recently and have no earlier history (capped at 200). Expect a wave when a repo or server version is first onboarded.",
+        "id": 8,
+        "links": [],
+        "title": "New tests (seen in [$recent], absent from baseline)",
+        "vizConfig": {
+          "group": "table",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "custom": {
+                  "align": "auto",
+                  "cellOptions": {
+                    "type": "auto"
+                  },
+                  "footer": {
+                    "reducers": []
+                  },
+                  "inspect": false
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "s"
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "test id"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.width",
+                      "value": 450
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "cellHeight": "sm",
+              "footer": {
+                "countRows": false,
+                "enablePagination": true,
+                "fields": "",
+                "reducer": [],
+                "show": false
+              },
+              "frameIndex": 0,
+              "showHeader": true,
+              "sortBy": [
+                {
+                  "desc": true,
+                  "displayName": "duration"
+                }
+              ]
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-9": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "count by (vcs_repository_name) (\n  max by (test_id, vcs_repository_name, server_version) (\n    last_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n  )\n  unless\n  max by (test_id, vcs_repository_name, server_version) (\n    last_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n  )\n)",
+                      "format": "time_series",
+                      "instant": true,
+                      "legendFormat": "{{vcs_repository_name}}",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "disappeared"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "Tests that had history but no recent runs - deleted, renamed, or a server version dropped from the CI matrix.",
+        "id": 9,
+        "links": [],
+        "title": "Disappeared tests (per repo)",
+        "vizConfig": {
+          "group": "stat",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                },
+                "unit": "short"
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": ["lastNotNull"],
+                "fields": "",
+                "values": false
+              },
+              "showPercentChange": false,
+              "textMode": "value_and_name",
+              "wideLayout": true
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-11": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "count(last_over_time(cae_v16_test_duration_seconds[20m]))\nor vector(0)",
+                      "format": "time_series",
+                      "instant": true,
+                      "legendFormat": "active now (20m billed window)",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "active"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "Series that received data in the last 20 minutes - the number Grafana Cloud billing sees at this instant.",
+        "id": 11,
+        "links": [],
+        "title": "Active series (billed window)",
+        "vizConfig": {
+          "group": "stat",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "short"
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": ["lastNotNull"],
+                "fields": "",
+                "values": false
+              },
+              "showPercentChange": false,
+              "textMode": "value",
+              "wideLayout": true
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-3": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "refId": "A",
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "version": "v0",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "topk(20,\n  max by (test_id, vcs_repository_name) (\n    quantile_over_time(0.5,\n      cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent]\n    )\n  )\n)",
+                      "format": "time_series",
+                      "instant": true,
+                      "legendFormat": "{{vcs_repository_name}}  ·  {{test_id}}",
+                      "range": false
+                    }
+                  }
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "The slowest tests across the fleet - typical (median) duration over the recent window; when a test runs against several server versions, the bar shows its slowest one. Click a bar to open the test in the Repo Health drilldown.",
+        "id": 3,
+        "links": [],
+        "title": "Top 20 slowest tests",
+        "vizConfig": {
+          "group": "bargauge",
+          "kind": "VizConfig",
+          "version": "13.2.0-29854286369",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "links": [
+                  {
+                    "title": "Open in Repo Health drilldown",
+                    "url": "/d/bos8jzw?${__url_time_range}&${repository:queryparam}&${server_version:queryparam}&${branch:queryparam}&var-test_id=${__field.labels.test_id}"
+                  }
+                ],
+                "unit": "s",
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "blue",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "displayMode": "basic",
+              "orientation": "horizontal",
+              "namePlacement": "auto",
+              "maxVizHeight": 300,
+              "minVizHeight": 16,
+              "minVizWidth": 8,
+              "showUnfilled": true,
+              "sizing": "auto",
+              "valueMode": "color",
+              "reduceOptions": {
+                "calcs": ["lastNotNull"],
+                "fields": "",
+                "values": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "panel-4": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "refId": "A",
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "version": "v0",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "topk(20,\n  max by (test_id, vcs_repository_name) (\n      max by (test_id, vcs_repository_name, server_version) (\n        quantile_over_time(0.5,\n          cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent]\n        )\n      )\n    -\n      max by (test_id, vcs_repository_name, server_version) (\n        quantile_over_time(0.5,\n          cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent\n        )\n      )\n  )\n)",
+                      "format": "time_series",
+                      "instant": true,
+                      "legendFormat": "{{vcs_repository_name}}  ·  {{test_id}}",
+                      "range": false
+                    }
+                  }
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "Tests that gained the most time compared with their own history - biggest absolute slowdowns across the fleet. Click a bar to open the test in the Repo Health drilldown.",
+        "id": 4,
+        "links": [],
+        "title": "Top 20 biggest regressions vs baseline median",
+        "vizConfig": {
+          "group": "bargauge",
+          "kind": "VizConfig",
+          "version": "13.2.0-29854286369",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "links": [
+                  {
+                    "title": "Open in Repo Health drilldown",
+                    "url": "/d/bos8jzw?${__url_time_range}&${repository:queryparam}&${server_version:queryparam}&${branch:queryparam}&var-test_id=${__field.labels.test_id}"
+                  }
+                ],
+                "unit": "s",
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "blue",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "displayMode": "basic",
+              "orientation": "horizontal",
+              "namePlacement": "auto",
+              "maxVizHeight": 300,
+              "minVizHeight": 16,
+              "minVizWidth": 8,
+              "showUnfilled": true,
+              "sizing": "auto",
+              "valueMode": "color",
+              "reduceOptions": {
+                "calcs": ["lastNotNull"],
+                "fields": "",
+                "values": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "panel-12": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "refId": "A",
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "version": "v0",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "topk(20,\n  max by (test_id, vcs_repository_name) (\n    (\n      max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent))\n      -\n      max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent]))\n    ) > 0\n  )\n)",
+                      "format": "time_series",
+                      "instant": true,
+                      "legendFormat": "{{vcs_repository_name}}  ·  {{test_id}}",
+                      "range": false
+                    }
+                  }
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "Tests that got faster compared with their own history - the other side of the movers panel. The value is time saved per run. Click a bar to open the test in the Repo Health drilldown.",
+        "id": 12,
+        "links": [],
+        "title": "Top 20 improvements vs baseline median",
+        "vizConfig": {
+          "group": "bargauge",
+          "kind": "VizConfig",
+          "version": "13.2.0-29854286369",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "links": [
+                  {
+                    "title": "Open in Repo Health drilldown",
+                    "url": "/d/bos8jzw?${__url_time_range}&${repository:queryparam}&${server_version:queryparam}&${branch:queryparam}&var-test_id=${__field.labels.test_id}"
+                  }
+                ],
+                "unit": "s",
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "displayMode": "basic",
+              "orientation": "horizontal",
+              "namePlacement": "auto",
+              "maxVizHeight": 300,
+              "minVizHeight": 16,
+              "minVizWidth": 8,
+              "showUnfilled": true,
+              "sizing": "auto",
+              "valueMode": "color",
+              "reduceOptions": {
+                "calcs": ["lastNotNull"],
+                "fields": "",
+                "values": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "panel-13": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "count by (vcs_repository_name) (\n    (max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])))\n  /\n    clamp_min(max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)), 0.05)\n  > 1.5\n  and\n    (max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])))\n  -\n    (max by (test_id, vcs_repository_name, server_version) (quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)))\n  > 1\n  and\n    (max by (test_id, vcs_repository_name, server_version) (count_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)))\n  >= 10\n)\nor\n0 * count by (vcs_repository_name) (last_over_time(cae_v16_test_run_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent]))",
+                      "format": "time_series",
+                      "instant": false,
+                      "legendFormat": "{{vcs_repository_name}}",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "regressed"
+                }
+              }
+            ],
+            "queryOptions": {
+              "interval": "12h"
+            },
+            "transformations": []
+          }
+        },
+        "description": "How many tests were flagged as regressed at each point in time, per repository (same rule as the regression table). Every reporting repository shows a line anchored at zero; a spike means something landed in that repo, and it decays as the new level becomes the norm.",
+        "id": 13,
+        "links": [],
+        "title": "Regressed tests over time",
+        "vizConfig": {
+          "group": "timeseries",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 0,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "always",
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "none"
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-14": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "quantile(0.50, max_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[1d]))",
+                      "format": "time_series",
+                      "instant": false,
+                      "legendFormat": "typical (p50)",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "p50"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "quantile(0.95, max_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[1d]))",
+                      "format": "time_series",
+                      "instant": false,
+                      "legendFormat": "slow tail (p95)",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "p95"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max(max_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[1d]))",
+                      "format": "time_series",
+                      "instant": false,
+                      "legendFormat": "slowest test",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "max"
+                }
+              }
+            ],
+            "queryOptions": {
+              "interval": "6h"
+            },
+            "transformations": []
+          }
+        },
+        "description": "The distribution of all test durations over time: the typical test (p50), the slow tail (p95), and the single slowest. A rising p95 with a flat p50 means the slow tests are getting slower even though most tests are fine.",
+        "id": 14,
+        "links": [],
+        "title": "Test duration spread",
+        "vizConfig": {
+          "group": "timeseries",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 0,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "always",
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "s"
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-15": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "sum by (vcs_repository_name) (last_over_time(cae_v16_test_run_tests{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\", test_result_status=~\"failed|error\"}[1d]))",
+                      "format": "time_series",
+                      "instant": false,
+                      "legendFormat": "{{vcs_repository_name}} failing",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "failing"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "sum by (vcs_repository_name) (last_over_time(cae_v16_test_run_tests{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\", test_result_status=\"skipped\"}[1d]))",
+                      "format": "time_series",
+                      "instant": false,
+                      "legendFormat": "{{vcs_repository_name}} skipped",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "skipped"
+                }
+              }
+            ],
+            "queryOptions": {
+              "interval": "6h"
+            },
+            "transformations": []
+          }
+        },
+        "description": "Test health beyond duration: how many tests failed (incl. errors) or were skipped in each run, per repository. A creeping skipped count usually means tests being quietly disabled instead of fixed.",
+        "id": 15,
+        "links": [],
+        "title": "Failed & skipped tests over time",
+        "vizConfig": {
+          "group": "timeseries",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 0,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "always",
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "none"
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-16": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "sum by (vcs_repository_name) (count_over_time(cae_v16_test_run_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[1d]))",
+                      "format": "time_series",
+                      "instant": false,
+                      "legendFormat": "{{vcs_repository_name}}",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "uploads"
+                }
+              }
+            ],
+            "queryOptions": {
+              "interval": "6h"
+            },
+            "transformations": []
+          }
+        },
+        "description": "How many test runs each repository uploaded per day (matrix jobs count separately). If a repository's cadence drops, its baselines age and the regression rule loses confidence - check this when a repo's numbers look stale.",
+        "id": 16,
+        "links": [],
+        "title": "CI uploads per day",
+        "vizConfig": {
+          "group": "timeseries",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 0,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "always",
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "none"
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    }
+  },
+  "layout": {
+    "kind": "GridLayout",
+    "spec": {
+      "items": [
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-1"
+            },
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-2"
+            },
+            "x": 6,
+            "y": 0,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-10"
+            },
+            "x": 12,
+            "y": 0,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-11"
+            },
+            "x": 18,
+            "y": 0,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-3"
+            },
+            "x": 0,
+            "y": 5,
+            "width": 24,
+            "height": 12
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-4"
+            },
+            "x": 0,
+            "y": 17,
+            "width": 24,
+            "height": 12
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-12"
+            },
+            "x": 0,
+            "y": 29,
+            "width": 24,
+            "height": 12
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-13"
+            },
+            "x": 0,
+            "y": 41,
+            "width": 12,
+            "height": 8
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-14"
+            },
+            "x": 12,
+            "y": 41,
+            "width": 12,
+            "height": 8
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-15"
+            },
+            "x": 0,
+            "y": 49,
+            "width": 12,
+            "height": 8
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-16"
+            },
+            "x": 12,
+            "y": 49,
+            "width": 12,
+            "height": 8
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-6"
+            },
+            "x": 0,
+            "y": 57,
+            "width": 12,
+            "height": 9
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-7"
+            },
+            "x": 12,
+            "y": 57,
+            "width": 12,
+            "height": 9
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-8"
+            },
+            "x": 0,
+            "y": 66,
+            "width": 16,
+            "height": 9
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-9"
+            },
+            "x": 16,
+            "y": 66,
+            "width": 8,
+            "height": 9
+          }
+        }
+      ]
+    }
+  },
+  "links": [
+    {
+      "title": "Test Regressions",
+      "type": "link",
+      "icon": "dashboard",
+      "url": "/d/botthhp",
+      "tooltip": "",
+      "asDropdown": false,
+      "targetBlank": false,
+      "includeVars": false,
+      "keepTime": true,
+      "tags": []
+    },
+    {
+      "title": "Repo Health drilldown",
+      "type": "link",
+      "icon": "dashboard",
+      "url": "/d/bos8jzw",
+      "tooltip": "",
+      "asDropdown": false,
+      "targetBlank": false,
+      "includeVars": false,
+      "keepTime": true,
+      "tags": []
+    }
+  ],
+  "liveNow": false,
+  "preload": false,
+  "tags": ["tests", "performance", "regression", "v16"],
+  "timeSettings": {
+    "autoRefresh": "",
+    "autoRefreshIntervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "fiscalYearStartMonth": 0,
+    "from": "now-30d",
+    "hideTimepicker": false,
+    "timezone": "browser",
+    "to": "now"
+  },
+  "title": "Test Trends & Timelines (v16)",
+  "variables": [
+    {
+      "kind": "DatasourceVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "grafanacloud-benchmarksrediscom-prom",
+          "value": "grafanacloud-prom"
+        },
+        "hide": "hideVariable",
+        "includeAll": false,
+        "label": "Datasource",
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "pluginId": "prometheus",
+        "refresh": "onDashboardLoad",
+        "regex": "",
+        "skipUrlSync": false
+      }
+    },
+    {
+      "kind": "QueryVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "definition": "label_values(cae_v16_test_duration_seconds,vcs_repository_name)",
+        "hide": "dontHide",
+        "includeAll": true,
+        "label": "Repository",
+        "multi": true,
+        "name": "repository",
+        "options": [],
+        "query": {
+          "datasource": {
+            "name": "${datasource}"
+          },
+          "group": "prometheus",
+          "kind": "DataQuery",
+          "spec": {
+            "qryType": 1,
+            "query": "label_values(cae_v16_test_duration_seconds,vcs_repository_name)"
+          },
+          "version": "v0"
+        },
+        "refresh": "onTimeRangeChanged",
+        "regex": "",
+        "regexApplyTo": "value",
+        "skipUrlSync": false,
+        "sort": "alphabeticalAsc",
+        "allValue": ".*"
+      }
+    },
+    {
+      "kind": "CustomVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "master",
+          "value": "master"
+        },
+        "hide": "dontHide",
+        "includeAll": false,
+        "label": "Branch",
+        "multi": false,
+        "name": "branch",
+        "options": [],
+        "query": "master,main",
+        "skipUrlSync": false,
+        "valuesFormat": "csv"
+      }
+    },
+    {
+      "kind": "QueryVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "definition": "label_values(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\"},server_version)",
+        "hide": "dontHide",
+        "includeAll": true,
+        "label": "Server version",
+        "multi": true,
+        "name": "server_version",
+        "options": [],
+        "query": {
+          "datasource": {
+            "name": "${datasource}"
+          },
+          "group": "prometheus",
+          "kind": "DataQuery",
+          "spec": {
+            "qryType": 1,
+            "query": "label_values(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\"},server_version)"
+          },
+          "version": "v0"
+        },
+        "refresh": "onTimeRangeChanged",
+        "regex": "",
+        "regexApplyTo": "value",
+        "skipUrlSync": false,
+        "sort": "alphabeticalAsc",
+        "allValue": ".*"
+      }
+    },
+    {
+      "kind": "CustomVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "3d",
+          "value": "3d"
+        },
+        "hide": "dontHide",
+        "includeAll": false,
+        "label": "Recent window",
+        "multi": false,
+        "name": "recent",
+        "options": [],
+        "query": "1d,2d,3d,7d",
+        "skipUrlSync": false,
+        "valuesFormat": "csv"
+      }
+    },
+    {
+      "kind": "CustomVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "14d",
+          "value": "14d"
+        },
+        "hide": "dontHide",
+        "includeAll": false,
+        "label": "Baseline window",
+        "multi": false,
+        "name": "baseline",
+        "options": [],
+        "query": "7d,14d,30d",
+        "skipUrlSync": false,
+        "valuesFormat": "csv"
+      }
+    },
+    {
+      "kind": "CustomVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "1.5",
+          "value": "1.5"
+        },
+        "hide": "dontHide",
+        "includeAll": false,
+        "label": "Regression ratio",
+        "multi": false,
+        "name": "ratio",
+        "options": [],
+        "query": "1.25,1.5,2,5",
+        "skipUrlSync": false,
+        "valuesFormat": "csv"
+      }
+    }
+  ]
+}

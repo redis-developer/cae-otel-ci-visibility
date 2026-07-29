@@ -1,0 +1,2742 @@
+{
+  "annotations": [
+    {
+      "kind": "AnnotationQuery",
+      "spec": {
+        "builtIn": true,
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "query": {
+          "datasource": {
+            "name": "-- Grafana --"
+          },
+          "group": "grafana",
+          "kind": "DataQuery",
+          "spec": {},
+          "version": "v0"
+        }
+      }
+    }
+  ],
+  "cursorSync": "Off",
+  "editable": true,
+  "liveNow": false,
+  "preload": false,
+  "timeSettings": {
+    "autoRefresh": "",
+    "autoRefreshIntervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "fiscalYearStartMonth": 0,
+    "from": "now-30d",
+    "hideTimepicker": false,
+    "timezone": "browser",
+    "to": "now"
+  },
+  "title": "Repo Health - Test Drilldown (v16)",
+  "tags": ["tests", "performance", "regression", "v16"],
+  "description": "Health check for one repository: its slowest tests, its biggest slowdowns, and a drilldown timeline for any tests you select. Pick your repository first; click any test name in the tables to add it to the timeline at the bottom.",
+  "links": [
+    {
+      "title": "Test Regressions",
+      "type": "link",
+      "icon": "dashboard",
+      "url": "/d/botthhp",
+      "tooltip": "",
+      "asDropdown": false,
+      "targetBlank": false,
+      "includeVars": false,
+      "keepTime": true,
+      "tags": []
+    },
+    {
+      "title": "Trends & Timelines",
+      "type": "link",
+      "icon": "dashboard",
+      "url": "/d/bocj686",
+      "tooltip": "",
+      "asDropdown": false,
+      "targetBlank": false,
+      "includeVars": false,
+      "keepTime": true,
+      "tags": []
+    }
+  ],
+  "variables": [
+    {
+      "kind": "DatasourceVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "grafanacloud-benchmarksrediscom-prom",
+          "value": "grafanacloud-prom"
+        },
+        "hide": "hideVariable",
+        "includeAll": false,
+        "label": "Datasource",
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "pluginId": "prometheus",
+        "refresh": "onDashboardLoad",
+        "regex": "",
+        "skipUrlSync": false
+      }
+    },
+    {
+      "kind": "QueryVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "definition": "label_values(cae_v16_test_duration_seconds,vcs_repository_name)",
+        "hide": "dontHide",
+        "includeAll": false,
+        "label": "Repository",
+        "multi": true,
+        "name": "repository",
+        "options": [],
+        "query": {
+          "datasource": {
+            "name": "${datasource}"
+          },
+          "group": "prometheus",
+          "kind": "DataQuery",
+          "spec": {
+            "qryType": 1,
+            "query": "label_values(cae_v16_test_duration_seconds,vcs_repository_name)"
+          },
+          "version": "v0"
+        },
+        "refresh": "onTimeRangeChanged",
+        "regex": "",
+        "regexApplyTo": "value",
+        "skipUrlSync": false,
+        "sort": "alphabeticalAsc"
+      }
+    },
+    {
+      "kind": "CustomVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "master",
+          "value": "master"
+        },
+        "hide": "dontHide",
+        "includeAll": false,
+        "label": "Branch",
+        "multi": false,
+        "name": "branch",
+        "options": [],
+        "query": "master,main",
+        "skipUrlSync": false,
+        "valuesFormat": "csv"
+      }
+    },
+    {
+      "kind": "QueryVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "definition": "label_values(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\"},server_version)",
+        "hide": "dontHide",
+        "includeAll": true,
+        "label": "Server version",
+        "multi": true,
+        "name": "server_version",
+        "options": [],
+        "query": {
+          "datasource": {
+            "name": "${datasource}"
+          },
+          "group": "prometheus",
+          "kind": "DataQuery",
+          "spec": {
+            "qryType": 1,
+            "query": "label_values(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\"},server_version)"
+          },
+          "version": "v0"
+        },
+        "refresh": "onTimeRangeChanged",
+        "regex": "",
+        "regexApplyTo": "value",
+        "skipUrlSync": false,
+        "sort": "alphabeticalAsc",
+        "allValue": ".*"
+      }
+    },
+    {
+      "kind": "CustomVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "3d",
+          "value": "3d"
+        },
+        "hide": "dontHide",
+        "includeAll": false,
+        "label": "Recent window (what counts as \"now\")",
+        "multi": false,
+        "name": "recent",
+        "options": [],
+        "query": "1d,2d,3d,7d",
+        "skipUrlSync": false,
+        "valuesFormat": "csv"
+      }
+    },
+    {
+      "kind": "CustomVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "14d",
+          "value": "14d"
+        },
+        "hide": "dontHide",
+        "includeAll": false,
+        "label": "Baseline window (what counts as \"usual\")",
+        "multi": false,
+        "name": "baseline",
+        "options": [],
+        "query": "7d,14d,30d",
+        "skipUrlSync": false,
+        "valuesFormat": "csv"
+      }
+    },
+    {
+      "kind": "CustomVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": "1.5",
+          "value": "1.5"
+        },
+        "hide": "dontHide",
+        "includeAll": false,
+        "label": "Slowdown threshold (x usual duration)",
+        "multi": false,
+        "name": "ratio",
+        "options": [],
+        "query": "1.25,1.5,2,5",
+        "skipUrlSync": false,
+        "valuesFormat": "csv"
+      }
+    },
+    {
+      "kind": "QueryVariable",
+      "spec": {
+        "allowCustomValue": true,
+        "current": {
+          "text": [],
+          "value": []
+        },
+        "definition": "label_values(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\"},test_id)",
+        "hide": "dontHide",
+        "includeAll": false,
+        "label": "Test ID",
+        "multi": true,
+        "name": "test_id",
+        "options": [],
+        "query": {
+          "datasource": {
+            "name": "${datasource}"
+          },
+          "group": "prometheus",
+          "kind": "DataQuery",
+          "spec": {
+            "qryType": 1,
+            "query": "label_values(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\"},test_id)"
+          },
+          "version": "v0"
+        },
+        "refresh": "onTimeRangeChanged",
+        "regex": "",
+        "regexApplyTo": "value",
+        "skipUrlSync": false,
+        "sort": "alphabeticalAsc"
+      }
+    }
+  ],
+  "elements": {
+    "panel-1": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "count(\n  last_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n)",
+                      "format": "time_series",
+                      "instant": true,
+                      "legendFormat": "tests",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "tests_tracked"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "How many test + server-version combinations are currently being tracked.",
+        "id": 1,
+        "links": [],
+        "title": "Tests tracked",
+        "vizConfig": {
+          "group": "stat",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "short"
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": ["lastNotNull"],
+                "fields": "",
+                "values": false
+              },
+              "showPercentChange": false,
+              "textMode": "auto",
+              "wideLayout": true
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-2": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "count(\n  (\n      max by (test_id, vcs_repository_name, server_version) (\n        quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n      )\n    /\n      clamp_min(\n        max by (test_id, vcs_repository_name, server_version) (\n          quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n        ),\n        0.05\n      )\n  ) > $ratio\n  and\n  (\n      max by (test_id, vcs_repository_name, server_version) (\n        quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n      )\n    -\n      max by (test_id, vcs_repository_name, server_version) (\n        quantile_over_time(0.5, cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n      )\n  ) > 1\n  and\n    max by (test_id, vcs_repository_name, server_version) (\n      count_over_time(cae_v16_test_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n    ) >= 10\n)\nor vector(0)",
+                      "format": "time_series",
+                      "instant": true,
+                      "legendFormat": "regressed",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "regressed_count"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "How many tests are slower right now than they used to be. A test counts only if all three are true: it is more than the chosen threshold slower than its usual duration, the slowdown is at least 1 second of real time, and there is enough history (10+ past measurements) to be confident. 0 means everything is running at its normal speed.",
+        "id": 2,
+        "links": [],
+        "title": "Regressed tests now",
+        "vizConfig": {
+          "group": "stat",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                },
+                "unit": "short"
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": ["lastNotNull"],
+                "fields": "",
+                "values": false
+              },
+              "showPercentChange": false,
+              "textMode": "auto",
+              "wideLayout": true
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-3": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "(\n  time()\n  -\n  max by (vcs_repository_name) (\n    timestamp(\n      last_over_time(cae_v16_test_run_duration_seconds{vcs_repository_name=~\"$repository\", vcs_repository_ref_name=~\"$branch\"}[$baseline])\n    )\n  )\n) / 3600",
+                      "format": "time_series",
+                      "instant": true,
+                      "legendFormat": "{{vcs_repository_name}}",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "hours_since_last_run"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "How long ago this repository last reported test results. If this grows beyond a day or two, the CI pipeline or the metrics reporting is probably broken - fix that before trusting the rest of this dashboard.",
+        "id": 3,
+        "links": [],
+        "title": "Hours since last run",
+        "vizConfig": {
+          "group": "stat",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "decimals": 1,
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 24
+                    },
+                    {
+                      "color": "red",
+                      "value": 96
+                    }
+                  ]
+                },
+                "unit": "h"
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": ["lastNotNull"],
+                "fields": "",
+                "values": false
+              },
+              "showPercentChange": false,
+              "textMode": "auto",
+              "wideLayout": true
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-4": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "sum(\n  last_over_time(cae_v16_test_run_duration_seconds{vcs_repository_name=~\"$repository\", server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n)\nor vector(0)",
+                      "format": "time_series",
+                      "instant": true,
+                      "legendFormat": "tests",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "tests_tracked"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "Combined duration of the latest test runs for the selected repository, summed across server versions.",
+        "id": 4,
+        "links": [],
+        "title": "Total test time (latest runs)",
+        "vizConfig": {
+          "group": "stat",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "s"
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": ["lastNotNull"],
+                "fields": "",
+                "values": false
+              },
+              "showPercentChange": false,
+              "textMode": "auto",
+              "wideLayout": true
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-5": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5, \n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\nand\ntopk(100,\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "current"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (\n  last_over_time(\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\nand\ntopk(100,\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "last_run"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)\nand\ntopk(100,\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "median"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (\n  count_over_time(\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)\nand\ntopk(100,\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "samples"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": true,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "clamp_min(\n  max by (test_id, vcs_repository_name, server_version) (\n    quantile_over_time(0.5,\n      cae_v16_test_duration_seconds{\n        vcs_repository_name=~\"$repository\",\n        vcs_repository_ref_name=~\"$branch\"\n      }[$baseline] offset $recent\n    )\n  ),\n  0.05\n)\nand\ntopk(100,\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "median_c"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": [
+              {
+                "group": "merge",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {}
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "abs change",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #current"
+                        }
+                      },
+                      "operator": "-",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #median"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "rel change",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "abs change"
+                        }
+                      },
+                      "operator": "/",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #median_c"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "median x ratio",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #median_c"
+                        }
+                      },
+                      "operator": "*",
+                      "right": {
+                        "fixed": "$ratio"
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "ratio gate",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #current"
+                        }
+                      },
+                      "operator": ">",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "median x ratio"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "abs gate",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "abs change"
+                        }
+                      },
+                      "operator": ">",
+                      "right": {
+                        "fixed": "1"
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "samples gate",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #samples"
+                        }
+                      },
+                      "operator": ">=",
+                      "right": {
+                        "fixed": "10"
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "ratio+abs gates",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "ratio gate"
+                        }
+                      },
+                      "operator": "*",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "abs gate"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "is regression",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "ratio+abs gates"
+                        }
+                      },
+                      "operator": "*",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "samples gate"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "organize",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "excludeByName": {
+                      "Time": true,
+                      "Value #median_c": true,
+                      "abs gate": true,
+                      "median x ratio": true,
+                      "ratio gate": true,
+                      "ratio+abs gates": true,
+                      "samples gate": true
+                    },
+                    "includeByName": {},
+                    "indexByName": {
+                      "test_id": 0,
+                      "is regression": 1,
+                      "server_version": 2,
+                      "Value #current": 3,
+                      "Value #last_run": 4,
+                      "Value #median": 5,
+                      "abs change": 6,
+                      "rel change": 7,
+                      "Value #samples": 8,
+                      "vcs_repository_name": 9,
+                      "Time": 10
+                    },
+                    "renameByName": {
+                      "Time": "",
+                      "Value #current": "recent median",
+                      "Value #last_run": "last run",
+                      "Value #median": "baseline median",
+                      "Value #samples": "samples",
+                      "test_id": "test id",
+                      "vcs_repository_name": "repository",
+                      "server_version": "server version"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "description": "The 100 slowest tests in this repository (typical duration over the recent window), one row per test per server version. Click a test name to add it to the timeline at the bottom.",
+        "id": 5,
+        "links": [],
+        "title": "Top 100 slowest tests",
+        "vizConfig": {
+          "group": "table",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "custom": {
+                  "align": "auto",
+                  "cellOptions": {
+                    "type": "auto"
+                  },
+                  "footer": {
+                    "reducers": []
+                  },
+                  "inspect": false
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "s",
+                "noValue": "—"
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "is regression"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "none"
+                    },
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "options": {
+                            "0": {
+                              "color": "green",
+                              "index": 0,
+                              "text": "✅ OK"
+                            },
+                            "1": {
+                              "color": "red",
+                              "index": 1,
+                              "text": "🔴 REGRESSION"
+                            }
+                          },
+                          "type": "value"
+                        },
+                        {
+                          "options": {
+                            "match": "null+nan",
+                            "result": {
+                              "color": "green",
+                              "index": 2,
+                              "text": "✅ OK"
+                            }
+                          },
+                          "type": "special"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "custom.width",
+                      "value": 140
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "test id"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.width",
+                      "value": 450
+                    },
+                    {
+                      "id": "links",
+                      "value": [
+                        {
+                          "title": "Add to timeline selection",
+                          "url": "?${__url_time_range}&${repository:queryparam}&${server_version:queryparam}&${branch:queryparam}&${test_id:queryparam}&var-test_id=${__value.raw}"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "repository"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.width",
+                      "value": 250
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "rel change"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "percentunit"
+                    },
+                    {
+                      "id": "custom.width",
+                      "value": 145
+                    },
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "type": "special",
+                          "options": {
+                            "match": "null+nan",
+                            "result": {
+                              "text": "—",
+                              "index": 0
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "samples"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "none"
+                    },
+                    {
+                      "id": "custom.width",
+                      "value": 110
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "abs change"
+                  },
+                  "properties": [
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "type": "special",
+                          "options": {
+                            "match": "null+nan",
+                            "result": {
+                              "text": "—",
+                              "index": 0
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "server version"
+                  },
+                  "properties": [
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "type": "special",
+                          "options": {
+                            "match": "empty",
+                            "result": {
+                              "text": "—",
+                              "index": 0
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "cellHeight": "sm",
+              "footer": {
+                "countRows": false,
+                "enablePagination": true,
+                "fields": "",
+                "reducer": [],
+                "show": false
+              },
+              "frameIndex": 0,
+              "showHeader": true,
+              "sortBy": [
+                {
+                  "desc": true,
+                  "displayName": "recent median"
+                }
+              ]
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-6": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5, \n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\nand\ntopk(100,\n  (\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n  -\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)\n  )\n  or\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "current"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (\n  last_over_time(\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\nand\ntopk(100,\n  (\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n  -\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)\n  )\n  or\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "last_run"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)\nand\ntopk(100,\n  (\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n  -\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)\n  )\n  or\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "median"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (\n  count_over_time(\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)\nand\ntopk(100,\n  (\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n  -\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)\n  )\n  or\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "samples"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": true,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "clamp_min(\n  max by (test_id, vcs_repository_name, server_version) (\n    quantile_over_time(0.5,\n      cae_v16_test_duration_seconds{\n        vcs_repository_name=~\"$repository\",\n        vcs_repository_ref_name=~\"$branch\"\n      }[$baseline] offset $recent\n    )\n  ),\n  0.05\n)\nand\ntopk(100,\n  (\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n  -\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)\n  )\n  or\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "median_c"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": [
+              {
+                "group": "merge",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {}
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "abs change",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #current"
+                        }
+                      },
+                      "operator": "-",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #median"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "rel change",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "abs change"
+                        }
+                      },
+                      "operator": "/",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #median_c"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "median x ratio",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #median_c"
+                        }
+                      },
+                      "operator": "*",
+                      "right": {
+                        "fixed": "$ratio"
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "ratio gate",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #current"
+                        }
+                      },
+                      "operator": ">",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "median x ratio"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "abs gate",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "abs change"
+                        }
+                      },
+                      "operator": ">",
+                      "right": {
+                        "fixed": "1"
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "samples gate",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #samples"
+                        }
+                      },
+                      "operator": ">=",
+                      "right": {
+                        "fixed": "10"
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "ratio+abs gates",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "ratio gate"
+                        }
+                      },
+                      "operator": "*",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "abs gate"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "is regression",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "ratio+abs gates"
+                        }
+                      },
+                      "operator": "*",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "samples gate"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "organize",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "excludeByName": {
+                      "Time": true,
+                      "Value #median_c": true,
+                      "abs gate": true,
+                      "median x ratio": true,
+                      "ratio gate": true,
+                      "ratio+abs gates": true,
+                      "samples gate": true
+                    },
+                    "includeByName": {},
+                    "indexByName": {
+                      "test_id": 0,
+                      "is regression": 1,
+                      "server_version": 2,
+                      "Value #current": 3,
+                      "Value #last_run": 4,
+                      "Value #median": 5,
+                      "abs change": 6,
+                      "rel change": 7,
+                      "Value #samples": 8,
+                      "vcs_repository_name": 9,
+                      "Time": 10
+                    },
+                    "renameByName": {
+                      "Time": "",
+                      "Value #current": "recent median",
+                      "Value #last_run": "last run",
+                      "Value #median": "baseline median",
+                      "Value #samples": "samples",
+                      "test_id": "test id",
+                      "vcs_repository_name": "repository",
+                      "server_version": "server version"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "description": "The 100 tests that changed most against their own history (before a baseline exists: the slowest). Click a test name to add it to the timeline at the bottom.",
+        "id": 6,
+        "links": [],
+        "title": "Top 100 movers vs their own history",
+        "vizConfig": {
+          "group": "table",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "custom": {
+                  "align": "auto",
+                  "cellOptions": {
+                    "type": "auto"
+                  },
+                  "footer": {
+                    "reducers": []
+                  },
+                  "inspect": false
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "s",
+                "noValue": "—"
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "is regression"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "none"
+                    },
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "options": {
+                            "0": {
+                              "color": "green",
+                              "index": 0,
+                              "text": "✅ OK"
+                            },
+                            "1": {
+                              "color": "red",
+                              "index": 1,
+                              "text": "🔴 REGRESSION"
+                            }
+                          },
+                          "type": "value"
+                        },
+                        {
+                          "options": {
+                            "match": "null+nan",
+                            "result": {
+                              "color": "green",
+                              "index": 2,
+                              "text": "✅ OK"
+                            }
+                          },
+                          "type": "special"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "custom.width",
+                      "value": 140
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "test id"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.width",
+                      "value": 450
+                    },
+                    {
+                      "id": "links",
+                      "value": [
+                        {
+                          "title": "Add to timeline selection",
+                          "url": "?${__url_time_range}&${repository:queryparam}&${server_version:queryparam}&${branch:queryparam}&${test_id:queryparam}&var-test_id=${__value.raw}"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "repository"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.width",
+                      "value": 250
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "rel change"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "percentunit"
+                    },
+                    {
+                      "id": "custom.width",
+                      "value": 145
+                    },
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "type": "special",
+                          "options": {
+                            "match": "null+nan",
+                            "result": {
+                              "text": "—",
+                              "index": 0
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "samples"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "none"
+                    },
+                    {
+                      "id": "custom.width",
+                      "value": 110
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "abs change"
+                  },
+                  "properties": [
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "type": "special",
+                          "options": {
+                            "match": "null+nan",
+                            "result": {
+                              "text": "—",
+                              "index": 0
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "server version"
+                  },
+                  "properties": [
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "type": "special",
+                          "options": {
+                            "match": "empty",
+                            "result": {
+                              "text": "—",
+                              "index": 0
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "cellHeight": "sm",
+              "footer": {
+                "countRows": false,
+                "enablePagination": true,
+                "fields": "",
+                "reducer": [],
+                "show": false
+              },
+              "frameIndex": 0,
+              "showHeader": true,
+              "sortBy": [
+                {
+                  "desc": true,
+                  "displayName": "rel change"
+                }
+              ]
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-7": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max_over_time(\n  cae_v16_test_duration_seconds{\n    test_id=~\"$test_id\",\n    vcs_repository_name=~\"$repository\", server_version=~\"$server_version\",\n    vcs_repository_ref_name=~\"$branch\"\n  }[1d]\n)",
+                      "format": "time_series",
+                      "instant": false,
+                      "legendFormat": "{{test_id}} {{server_version}}",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "timeline"
+                }
+              }
+            ],
+            "queryOptions": {
+              "interval": "1h"
+            },
+            "transformations": []
+          }
+        },
+        "description": "Duration over time for the tests you selected - one line per server version. Add tests by clicking names in the tables above, or via the Test ID selector. Each point is the slowest run of that day, so spikes stay visible.",
+        "id": 7,
+        "links": [],
+        "title": "Duration timeline for selected tests",
+        "vizConfig": {
+          "group": "timeseries",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 0,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "always",
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "s"
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "multi",
+                "sort": "desc"
+              }
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    },
+    "panel-8": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5, \n    cae_v16_test_duration_seconds{\n      test_id=~\"$test_id\",\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "current"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (\n  last_over_time(\n    cae_v16_test_duration_seconds{\n      test_id=~\"$test_id\",\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$recent]\n  )\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "last_run"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5,\n    cae_v16_test_duration_seconds{\n      test_id=~\"$test_id\",\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "median"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "max by (test_id, vcs_repository_name, server_version) (\n  count_over_time(\n    cae_v16_test_duration_seconds{\n      test_id=~\"$test_id\",\n      vcs_repository_name=~\"$repository\",\n      server_version=~\"$server_version\",\n      vcs_repository_ref_name=~\"$branch\"\n    }[$baseline] offset $recent\n  )\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "samples"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": true,
+                  "query": {
+                    "datasource": {
+                      "name": "${datasource}"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "exemplar": false,
+                      "expr": "clamp_min(\n  max by (test_id, vcs_repository_name, server_version) (\n    quantile_over_time(0.5,\n      cae_v16_test_duration_seconds{\n      test_id=~\"$test_id\",\n        vcs_repository_name=~\"$repository\",\n        vcs_repository_ref_name=~\"$branch\"\n      }[$baseline] offset $recent\n    )\n  ),\n  0.05\n)",
+                      "format": "table",
+                      "instant": true,
+                      "legendFormat": "__auto",
+                      "range": false
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "median_c"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": [
+              {
+                "group": "merge",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {}
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "abs change",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #current"
+                        }
+                      },
+                      "operator": "-",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #median"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "rel change",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "abs change"
+                        }
+                      },
+                      "operator": "/",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #median_c"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "median x ratio",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #median_c"
+                        }
+                      },
+                      "operator": "*",
+                      "right": {
+                        "fixed": "$ratio"
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "ratio gate",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #current"
+                        }
+                      },
+                      "operator": ">",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "median x ratio"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "abs gate",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "abs change"
+                        }
+                      },
+                      "operator": ">",
+                      "right": {
+                        "fixed": "1"
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "samples gate",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "Value #samples"
+                        }
+                      },
+                      "operator": ">=",
+                      "right": {
+                        "fixed": "10"
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "ratio+abs gates",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "ratio gate"
+                        }
+                      },
+                      "operator": "*",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "abs gate"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "calculateField",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "alias": "is regression",
+                    "binary": {
+                      "left": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "ratio+abs gates"
+                        }
+                      },
+                      "operator": "*",
+                      "right": {
+                        "matcher": {
+                          "id": "byName",
+                          "options": "samples gate"
+                        }
+                      }
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                      "reducer": "sum"
+                    },
+                    "replaceFields": false
+                  }
+                }
+              },
+              {
+                "group": "organize",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "excludeByName": {
+                      "Time": true,
+                      "Value #median_c": true,
+                      "abs gate": true,
+                      "median x ratio": true,
+                      "ratio gate": true,
+                      "ratio+abs gates": true,
+                      "samples gate": true
+                    },
+                    "includeByName": {},
+                    "indexByName": {
+                      "test_id": 0,
+                      "is regression": 1,
+                      "server_version": 2,
+                      "Value #current": 3,
+                      "Value #last_run": 4,
+                      "Value #median": 5,
+                      "abs change": 6,
+                      "rel change": 7,
+                      "Value #samples": 8,
+                      "vcs_repository_name": 9,
+                      "Time": 10
+                    },
+                    "renameByName": {
+                      "Time": "",
+                      "Value #current": "recent median",
+                      "Value #last_run": "last run",
+                      "Value #median": "baseline median",
+                      "Value #samples": "samples",
+                      "test_id": "test id",
+                      "vcs_repository_name": "repository",
+                      "server_version": "server version"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "description": "Exact numbers for the tests currently shown in the timeline: typical recent duration, baseline, change and verdict per server version.",
+        "id": 8,
+        "links": [],
+        "title": "Selected tests - details",
+        "vizConfig": {
+          "group": "table",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "custom": {
+                  "align": "auto",
+                  "cellOptions": {
+                    "type": "auto"
+                  },
+                  "footer": {
+                    "reducers": []
+                  },
+                  "inspect": false
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "s",
+                "noValue": "—"
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "is regression"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "none"
+                    },
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "options": {
+                            "0": {
+                              "color": "green",
+                              "index": 0,
+                              "text": "✅ OK"
+                            },
+                            "1": {
+                              "color": "red",
+                              "index": 1,
+                              "text": "🔴 REGRESSION"
+                            }
+                          },
+                          "type": "value"
+                        },
+                        {
+                          "options": {
+                            "match": "null+nan",
+                            "result": {
+                              "color": "green",
+                              "index": 2,
+                              "text": "✅ OK"
+                            }
+                          },
+                          "type": "special"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "custom.width",
+                      "value": 140
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "test id"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.width",
+                      "value": 450
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "repository"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.width",
+                      "value": 250
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "rel change"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "percentunit"
+                    },
+                    {
+                      "id": "custom.width",
+                      "value": 145
+                    },
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "type": "special",
+                          "options": {
+                            "match": "null+nan",
+                            "result": {
+                              "text": "—",
+                              "index": 0
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "samples"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "none"
+                    },
+                    {
+                      "id": "custom.width",
+                      "value": 110
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "abs change"
+                  },
+                  "properties": [
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "type": "special",
+                          "options": {
+                            "match": "null+nan",
+                            "result": {
+                              "text": "—",
+                              "index": 0
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "server version"
+                  },
+                  "properties": [
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "type": "special",
+                          "options": {
+                            "match": "empty",
+                            "result": {
+                              "text": "—",
+                              "index": 0
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "cellHeight": "sm",
+              "footer": {
+                "countRows": false,
+                "enablePagination": true,
+                "fields": "",
+                "reducer": [],
+                "show": false
+              },
+              "frameIndex": 0,
+              "showHeader": true,
+              "sortBy": [
+                {
+                  "desc": true,
+                  "displayName": "rel change"
+                }
+              ]
+            }
+          },
+          "version": "13.2.0-29854286369"
+        }
+      }
+    }
+  },
+  "layout": {
+    "kind": "GridLayout",
+    "spec": {
+      "items": [
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-1"
+            },
+            "height": 5,
+            "width": 6,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-2"
+            },
+            "height": 5,
+            "width": 6,
+            "x": 6,
+            "y": 0
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-3"
+            },
+            "height": 5,
+            "width": 6,
+            "x": 12,
+            "y": 0
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-4"
+            },
+            "height": 5,
+            "width": 6,
+            "x": 18,
+            "y": 0
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-5"
+            },
+            "height": 12,
+            "width": 24,
+            "x": 0,
+            "y": 5
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-6"
+            },
+            "height": 12,
+            "width": 24,
+            "x": 0,
+            "y": 17
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-7"
+            },
+            "height": 10,
+            "width": 24,
+            "x": 0,
+            "y": 29
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-8"
+            },
+            "height": 9,
+            "width": 24,
+            "x": 0,
+            "y": 39
+          }
+        }
+      ]
+    }
+  }
+}
