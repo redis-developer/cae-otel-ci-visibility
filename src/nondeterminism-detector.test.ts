@@ -44,6 +44,16 @@ describe('detectNondeterministicTestIds', () => {
       reason: 'compact date (YYYYMMDD)'
     },
     {
+      name: 'ISO-8601 timestamp (T-glued, escapes date and clock patterns)',
+      testId: 'AuditTest.records event at 2026-07-29T12:30:45Z',
+      reason: 'ISO timestamp'
+    },
+    {
+      name: 'ISO-8601 timestamp without seconds',
+      testId: 'AuditTest.schedules for 2026-07-29T12:30',
+      reason: 'ISO timestamp'
+    },
+    {
       name: 'clock time',
       testId: 'scheduler.JobTest.fires at 12:30:45',
       reason: 'clock time'

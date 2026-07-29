@@ -33635,6 +33635,14 @@ const DETECTORS = [
         pattern: /\b\d{4}-\d{2}-\d{2}\b/
     },
     {
+        // Full ISO-8601 timestamps glue digits to 'T' (a word character), which
+        // defeats the \b boundaries of the date and clock patterns — so
+        // '2026-07-29T12:30:45Z' escapes both. Measured: 0 hits on the live
+        // corpus.
+        reason: 'ISO timestamp',
+        pattern: /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/
+    },
+    {
         // 2020–2039 keeps date-shaped 8-digit numbers apart from plain counts
         reason: 'compact date (YYYYMMDD)',
         pattern: /(?<!\d)20[2-3]\d(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])(?!\d)/
