@@ -1,9 +1,16 @@
 import * as core from '@actions/core'
 
 import * as github from '@actions/github'
-import { ingestDir } from './junit-parser.js'
-import { generateMetrics, type TMetricsConfig } from './metrics-generator.js'
-import { detectNondeterministicTestIds } from './nondeterminism-detector.js'
+import { ingestDir, type TResult } from './junit-parser.js'
+import {
+  generateMetrics,
+  type TMetricDataPoint,
+  type TMetricsConfig
+} from './metrics-generator.js'
+import {
+  detectNondeterministicTestIds,
+  type TSuspiciousTestId
+} from './nondeterminism-detector.js'
 import { MetricsSubmitter } from './metrics-submitter.js'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto'
 import { AggregationTemporalityPreference } from '@opentelemetry/exporter-metrics-otlp-http'
@@ -81,7 +88,24 @@ export async function run(): Promise<void> {
     const otlpEndpoint = core.getInput('otlp-endpoint', { required: true })
     const otlpHeaders = core.getInput('otlp-headers') || ''
     const branchAllowlist = core.getInput('branch-allowlist') || ''
-    const serverVersion = core.getInput('server-version') || ''
+    const serverVersionInput = core.getInput('server-version') || ''
+    const onNondeterministicIds = core.getInput('on-nondeterministic-ids') || ''
+
+    // Config errors fail hard before any gating, so a misconfigured consumer
+    // learns on the first run — even one on a branch that would not emit.
+    const modeResult = parseNondeterministicIdsMode(onNondeterministicIds)
+    if (!modeResult.success) {
+      core.setFailed(modeResult.error)
+      return
+    }
+    const nondeterministicIdsMode = modeResult.data
+
+    const serverVersionResult = validateServerVersion(serverVersionInput)
+    if (!serverVersionResult.success) {
+      core.setFailed(serverVersionResult.error)
+      return
+    }
+    const serverVersion = serverVersionResult.data
 
     const headers = parseOtlpHeaders(otlpHeaders)
 
@@ -100,7 +124,7 @@ export async function run(): Promise<void> {
     const config: TMetricsConfig = {
       repository,
       branch,
-      serverVersion: serverVersion || undefined
+      serverVersion
     }
 
     core.info(`🔧 Configuring OpenTelemetry CI Visibility`)
@@ -131,6 +155,39 @@ export async function run(): Promise<void> {
     }
 
     core.info(`   Branch gate: ${branchDecision.reason}`)
+
+    core.info(`📊 Processing JUnit XML files from: ${junitXmlFolder}`)
+
+    const ingestResult = ingestDir(junitXmlFolder)
+
+    if (!ingestResult.success) {
+      core.error(`Failed to ingest JUnit XML files: ${ingestResult.error}`)
+      return
+    }
+
+    const report = ingestResult.data
+
+    if (report.testsuites.length === 0) {
+      core.warning(`No test suites found in ${junitXmlFolder}`)
+      return
+    }
+
+    const metricDataPoints = generateMetrics(report, config)
+    core.info(
+      `Generated ${metricDataPoints.length} metrics from ${report.testsuites.length} test suites`
+    )
+
+    const enforcementResult = enforceNondeterministicTestIds(
+      metricDataPoints,
+      nondeterministicIdsMode
+    )
+
+    if (!enforcementResult.success) {
+      core.setFailed(enforcementResult.error)
+      return
+    }
+
+    const dataPointsToSubmit = enforcementResult.data
 
     const resource = resourceFromAttributes({
       [ATTR_SERVICE_NAME]: repository
@@ -168,44 +225,21 @@ export async function run(): Promise<void> {
       metricsVersion
     )
 
-    core.info(`📊 Processing JUnit XML files from: ${junitXmlFolder}`)
-
-    const ingestResult = ingestDir(junitXmlFolder)
-
-    if (!ingestResult.success) {
-      core.error(`Failed to ingest JUnit XML files: ${ingestResult.error}`)
-      return
-    }
-
-    const report = ingestResult.data
-
-    if (report.testsuites.length === 0) {
-      core.warning(`No test suites found in ${junitXmlFolder}`)
-      return
-    }
-
-    const metricDataPoints = generateMetrics(report, config)
-    core.info(
-      `Generated ${metricDataPoints.length} metrics from ${report.testsuites.length} test suites`
-    )
-
-    warnOnNondeterministicTestIds(metricDataPoints)
-
-    if (metricDataPoints.length > METRIC_CARDINALITY_LIMIT) {
+    if (dataPointsToSubmit.length > METRIC_CARDINALITY_LIMIT) {
       core.warning(
-        `${metricDataPoints.length} data points exceed the metric cardinality limit (${METRIC_CARDINALITY_LIMIT}); ` +
+        `${dataPointsToSubmit.length} data points exceed the metric cardinality limit (${METRIC_CARDINALITY_LIMIT}); ` +
           `the excess is merged into a single otel.metric.overflow point and those tests' durations are lost`
       )
     }
 
     // Full dump of what gets exported; visible with ACTIONS_STEP_DEBUG=true
-    for (const dataPoint of metricDataPoints) {
+    for (const dataPoint of dataPointsToSubmit) {
       core.debug(
         `emit ${dataPoint.metricName} test.id="${dataPoint.attributes['test.id']}" value=${dataPoint.value}`
       )
     }
 
-    metricsSubmitter.submitMetrics(metricDataPoints)
+    metricsSubmitter.submitMetrics(dataPointsToSubmit)
 
     core.info(
       `Summary: ${report.totals.tests} tests, ${report.totals.failed} failures, ${report.totals.error} errors, ${report.totals.skipped} skipped`
@@ -228,22 +262,39 @@ export async function run(): Promise<void> {
   }
 }
 
-const MAX_REPORTED_SUSPICIOUS_IDS = 10
+type TNondeterministicIdsMode = 'warn' | 'skip' | 'break'
 
-// A run-varying value in a test name (UUID, timestamp, port, temp path)
-// mints a new series every run — the same churn the stable label schema
-// removed. Warn, don't fail: the fix belongs in the test names.
-const warnOnNondeterministicTestIds = (
-  metricDataPoints: readonly { attributes: Readonly<Record<string, string>> }[]
-): void => {
-  const suspicious = detectNondeterministicTestIds(
-    metricDataPoints.map((dataPoint) => dataPoint.attributes['test.id'])
-  )
+const NONDETERMINISTIC_IDS_MODES: readonly TNondeterministicIdsMode[] = [
+  'warn',
+  'skip',
+  'break'
+]
 
-  if (suspicious.length === 0) {
-    return
+const parseNondeterministicIdsMode = (
+  input: string
+): TResult<TNondeterministicIdsMode> => {
+  const mode = input.trim().toLowerCase() || 'warn'
+
+  const match = NONDETERMINISTIC_IDS_MODES.find((known) => known === mode)
+  if (match) {
+    return { success: true, data: match }
   }
 
+  return {
+    success: false,
+    error:
+      `Invalid on-nondeterministic-ids value '${input}'. Allowed values: ` +
+      `'warn' (default — report offenders, submit everything), ` +
+      `'skip' (drop offenders' per-test data points, submit the rest), ` +
+      `'break' (fail the build, upload nothing).`
+  }
+}
+
+const MAX_REPORTED_SUSPICIOUS_IDS = 10
+
+const formatSuspiciousTestIds = (
+  suspicious: readonly TSuspiciousTestId[]
+): string => {
   const preview = suspicious
     .slice(0, MAX_REPORTED_SUSPICIOUS_IDS)
     .map((entry) => `  - ${entry.testId} (${entry.reasons.join(', ')})`)
@@ -253,10 +304,117 @@ const warnOnNondeterministicTestIds = (
       ? `\n  ...and ${suspicious.length - MAX_REPORTED_SUSPICIOUS_IDS} more`
       : ''
 
+  return (
+    `${suspicious.length} test id(s) look nondeterministic — run-varying ` +
+    `values in test names mint a new metric series every run:\n` +
+    `${preview}${overflow}`
+  )
+}
+
+// A run-varying value in a test name (UUID, timestamp, port, temp path)
+// mints a new series every run — the same churn the stable label schema
+// removed. The mode decides how hard to push back; the real fix always
+// belongs in the test names (or the reporter's name template).
+const enforceNondeterministicTestIds = (
+  metricDataPoints: readonly TMetricDataPoint[],
+  mode: TNondeterministicIdsMode
+): TResult<readonly TMetricDataPoint[]> => {
+  const suspicious = detectNondeterministicTestIds(
+    metricDataPoints.map((dataPoint) => dataPoint.attributes['test.id'])
+  )
+
+  if (suspicious.length === 0) {
+    return { success: true, data: metricDataPoints }
+  }
+
+  const offenders = formatSuspiciousTestIds(suspicious)
+
+  if (mode === 'break') {
+    return {
+      success: false,
+      error:
+        `${offenders}\n` +
+        `Nothing was uploaded (on-nondeterministic-ids: break). Fix the ` +
+        `test names (or the reporter's name template), or relax the mode ` +
+        `to 'warn' or 'skip'.`
+    }
+  }
+
+  if (mode === 'skip') {
+    const suspiciousIds = new Set(suspicious.map((entry) => entry.testId))
+    // Only per-test data points carry test.id; rollups pass through — they
+    // have no test.id label, so a churning name is no cardinality risk
+    // there, and dropping them would distort suite/run totals.
+    const dataPoints = metricDataPoints.filter((dataPoint) => {
+      const testId = dataPoint.attributes['test.id']
+      return testId === undefined || !suspiciousIds.has(testId)
+    })
+
+    core.warning(
+      `${offenders}\n` +
+        `Skipping their per-test data points (on-nondeterministic-ids: ` +
+        `skip); run/suite rollups still include them. Fix the test names ` +
+        `(or the reporter's name template) to get their metrics back.`
+    )
+
+    return { success: true, data: dataPoints }
+  }
+
   core.warning(
-    `${suspicious.length} test id(s) look nondeterministic — run-varying values in test names mint a new metric series every run:\n` +
-      `${preview}${overflow}\n` +
+    `${offenders}\n` +
       `Fix the test names (or the reporter's name template) to keep metric cardinality bounded.`
+  )
+
+  return { success: true, data: metricDataPoints }
+}
+
+const SERVER_VERSION_TRACK = /^\d+\.\d+$/
+
+const SERVER_VERSION_ALLOWED =
+  `Allowed values: 'unstable' (server built from master / under ` +
+  `development) or a major.minor version track like '8.4'.`
+
+// The server.version label multiplies series per test, so its values must be
+// stable and bounded. Exactly two shapes are allowed: the literal 'unstable'
+// and a 'major.minor' version track. Empty stays allowed — repos without a
+// server under test simply omit the label.
+const validateServerVersion = (input: string): TResult<string | undefined> => {
+  const value = input.trim()
+
+  if (!value) {
+    return { success: true, data: undefined }
+  }
+
+  if (value === 'unstable' || SERVER_VERSION_TRACK.test(value)) {
+    return { success: true, data: value }
+  }
+
+  const reject = (hint: string): TResult<string | undefined> => ({
+    success: false,
+    error: `Invalid server-version '${value}'. ${SERVER_VERSION_ALLOWED} ${hint}`
+  })
+
+  if (value.toLowerCase() === 'unstable') {
+    return reject(`Use lowercase: 'unstable'.`)
+  }
+
+  const patchVersion = value.match(/^(\d+\.\d+)(?:\.\d+)+$/)
+  if (patchVersion) {
+    return reject(
+      `Patch releases collapse into their version track — pass '${patchVersion[1]}'.`
+    )
+  }
+
+  const suffixedVersion = value.match(/^(\d+\.\d+)(?:\.\d+)*[-+].+$/)
+  if (suffixedVersion) {
+    return reject(
+      `Release candidates and previews collapse into their version track — pass '${suffixedVersion[1]}'.`
+    )
+  }
+
+  return reject(
+    `Image tags, commit SHAs and other run-varying values would mint new ` +
+      `metric series every run — see the README section 'Server version convention'.`
   )
 }
 

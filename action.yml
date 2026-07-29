@@ -29,12 +29,22 @@ inputs:
     description: >-
       Optional version track of the system under test (e.g. the Redis server
       version a client library's CI matrix runs against). Emitted as the
-      server.version label so regressions are detected per version. Pass the
-      track you want a test compared against over time — major.minor like '8.4',
-      with release candidates and GA builds collapsed into the same value
-      ('8.4-rc2' and '8.4.0' both as '8.4'). Must be a stable, bounded value —
-      never a run id, timestamp, or other run-varying value, which would mint
-      new metric series every run.
+      server.version label so regressions are detected per version. Exactly two
+      value shapes are accepted: the literal 'unstable' (server built from
+      master / under development) or a major.minor version track like '8.4',
+      with release candidates, previews and GA builds collapsed into the same
+      track ('8.4-rc2' and '8.4.0' must both be passed as '8.4'). Any other
+      value — patch versions, image tags, commit SHAs — fails the build, since
+      run-varying label values would mint new metric series every run.
+    required: false
+  on-nondeterministic-ids:
+    description: >-
+      What to do when generated test ids look nondeterministic (contain
+      run-varying values like UUIDs, timestamps or random ports, which mint a
+      new metric series every run). 'warn' (default) reports offenders and
+      submits everything; 'skip' drops the offenders' per-test data points and
+      submits the rest (run/suite rollups still include them); 'break' fails the
+      build and uploads nothing.
     required: false
 
 runs:

@@ -377,6 +377,183 @@ describe('main.ts', () => {
     expect(mockCore.setFailed).not.toHaveBeenCalled()
   })
 
+  const nondeterministicXml = `<?xml version="1.0" encoding="UTF-8"?>
+<testsuites time="1.0">
+  <testsuite name="sessions" time="1.0">
+    <testcase classname="client.session" name="reconnects after 3f2b8c9a-77aa-4bde-9c01-2f4a5b6c7d8e expires" time="0.5"/>
+    <testcase classname="client.session" name="connects" time="0.5"/>
+  </testsuite>
+</testsuites>`
+
+  const mockInputs = (inputs: Record<string, string>) => {
+    mockCore.getInput.mockImplementation(
+      //@ts-expect-error - Mock implementation
+      (name: string) => inputs[name] ?? ''
+    )
+  }
+
+  it('should drop offending per-test data points in skip mode but keep rollups', async () => {
+    writeFileSync(join(testDir, 'nondeterministic.xml'), nondeterministicXml)
+
+    mockInputs({
+      'junit-xml-folder': testDir,
+      'otlp-endpoint': 'http://localhost:4318/v1/metrics',
+      'on-nondeterministic-ids': 'skip'
+    })
+
+    await run()
+
+    expect(mockCore.warning).toHaveBeenCalledWith(
+      expect.stringContaining('Skipping their per-test data points')
+    )
+    expect(mockMetricsSubmitter.submitMetrics).toHaveBeenCalledTimes(1)
+    expect(mockCore.setFailed).not.toHaveBeenCalled()
+
+    const submitted = mockMetricsSubmitter.submitMetrics.mock
+      .calls[0]![0] as readonly {
+      metricName: string
+      attributes: Record<string, string>
+    }[]
+
+    // The offending test's per-test point is gone, the clean one stays
+    const testIds = submitted
+      .map((dataPoint) => dataPoint.attributes['test.id'])
+      .filter((testId) => testId !== undefined)
+    expect(testIds).toEqual(['client.session.connects'])
+
+    // Run/suite rollups (no test.id label) pass through untouched
+    expect(
+      submitted.some((dataPoint) => dataPoint.metricName === 'test_run_tests')
+    ).toBe(true)
+    expect(
+      submitted.some(
+        (dataPoint) => dataPoint.metricName === 'testsuite_duration_seconds'
+      )
+    ).toBe(true)
+  })
+
+  it('should fail the build and upload nothing in break mode', async () => {
+    writeFileSync(join(testDir, 'nondeterministic.xml'), nondeterministicXml)
+
+    mockInputs({
+      'junit-xml-folder': testDir,
+      'otlp-endpoint': 'http://localhost:4318/v1/metrics',
+      'on-nondeterministic-ids': 'break'
+    })
+
+    await run()
+
+    expect(mockCore.setFailed).toHaveBeenCalledWith(
+      expect.stringContaining('look nondeterministic')
+    )
+    expect(mockCore.setFailed).toHaveBeenCalledWith(
+      expect.stringContaining('3f2b8c9a-77aa-4bde-9c01-2f4a5b6c7d8e')
+    )
+    expect(mockMetricsSubmitter.submitMetrics).not.toHaveBeenCalled()
+    expect(mockOTLPExporter.OTLPMetricExporter).not.toHaveBeenCalled()
+  })
+
+  it('should submit everything in skip/break modes when all ids are clean', async () => {
+    writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+
+    mockInputs({
+      'junit-xml-folder': testDir,
+      'otlp-endpoint': 'http://localhost:4318/v1/metrics',
+      'on-nondeterministic-ids': 'break'
+    })
+
+    await run()
+
+    expect(mockMetricsSubmitter.submitMetrics).toHaveBeenCalledTimes(1)
+    expect(mockCore.setFailed).not.toHaveBeenCalled()
+  })
+
+  it('should fail on an invalid on-nondeterministic-ids value', async () => {
+    writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+
+    mockInputs({
+      'junit-xml-folder': testDir,
+      'otlp-endpoint': 'http://localhost:4318/v1/metrics',
+      'on-nondeterministic-ids': 'ignore'
+    })
+
+    await run()
+
+    expect(mockCore.setFailed).toHaveBeenCalledWith(
+      expect.stringContaining("Invalid on-nondeterministic-ids value 'ignore'")
+    )
+    expect(mockMetricsSubmitter.submitMetrics).not.toHaveBeenCalled()
+  })
+
+  it.each(['8.10', '3.4', 'unstable'])(
+    'should accept server-version %s',
+    async (serverVersion) => {
+      writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+
+      mockInputs({
+        'junit-xml-folder': testDir,
+        'otlp-endpoint': 'http://localhost:4318/v1/metrics',
+        'server-version': serverVersion
+      })
+
+      await run()
+
+      expect(mockCore.info).toHaveBeenCalledWith(
+        `   Server version: ${serverVersion}`
+      )
+      expect(mockMetricsSubmitter.submitMetrics).toHaveBeenCalledTimes(1)
+      expect(mockCore.setFailed).not.toHaveBeenCalled()
+    }
+  )
+
+  it.each([
+    ['8.4.0', "pass '8.4'"],
+    ['8.10-rc2', "pass '8.10'"],
+    ['rs-7.4', 'Server version convention'],
+    ['latest', 'Server version convention'],
+    ['3f2b8c9a77aa4bde9c012f4a5b6c7d8e1a2b3c4d', 'Server version convention'],
+    ['2026-07-29T12:30:45Z', 'Server version convention']
+  ])(
+    'should reject server-version %s with an actionable hint',
+    async (serverVersion, expectedHint) => {
+      writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+
+      mockInputs({
+        'junit-xml-folder': testDir,
+        'otlp-endpoint': 'http://localhost:4318/v1/metrics',
+        'server-version': serverVersion
+      })
+
+      await run()
+
+      expect(mockCore.setFailed).toHaveBeenCalledWith(
+        expect.stringContaining(`Invalid server-version '${serverVersion}'`)
+      )
+      expect(mockCore.setFailed).toHaveBeenCalledWith(
+        expect.stringContaining(expectedHint)
+      )
+      expect(mockMetricsSubmitter.submitMetrics).not.toHaveBeenCalled()
+      expect(mockOTLPExporter.OTLPMetricExporter).not.toHaveBeenCalled()
+    }
+  )
+
+  it('should fail on invalid server-version even when the branch gate would skip emission', async () => {
+    writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+    mockGithub.context.ref = 'refs/heads/feature-x'
+
+    mockInputs({
+      'junit-xml-folder': testDir,
+      'otlp-endpoint': 'http://localhost:4318/v1/metrics',
+      'server-version': 'latest'
+    })
+
+    await run()
+
+    expect(mockCore.setFailed).toHaveBeenCalledWith(
+      expect.stringContaining("Invalid server-version 'latest'")
+    )
+  })
+
   it('should not warn for deterministic test ids', async () => {
     writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
 

@@ -33596,10 +33596,16 @@ const getBaseAttributes = (config) => {
     return attributes;
 };
 
+// OS-assigned (random) ports come from the ephemeral range 32768–65535;
+// fixed well-known ports in test names (localhost:6379) are stable and must
+// not be flagged — measured live: node-redis URL-parsing tests carry them.
+const EPHEMERAL_PORT = '(?:3276[8-9]|327[7-9][0-9]|32[8-9][0-9]{2}|3[3-9][0-9]{3}|[4-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])';
 // Heuristics for run-varying values embedded in test names. Every new value
 // mints a new metric series per run, reintroducing unbounded cardinality —
-// the exact churn the stable label schema removed. Matches are warnings, not
-// failures: a fixed date in a test name is legal, just suspicious.
+// the exact churn the stable label schema removed. A fixed date or token in
+// a test name is legal, just suspicious — which is why `warn` is the default
+// enforcement mode. Every pattern here was measured against the live fleet's
+// ~3.5k proven-stable test ids (zero churn) with zero hits.
 const DETECTORS = [
     {
         reason: 'UUID',
@@ -33608,12 +33614,30 @@ const DETECTORS = [
     {
         // 12+ hex chars (hashes, memory addresses). Deliberately above the
         // 8-char hash suffix that truncated test IDs legitimately carry.
+        // Requires a letter so pure digit runs fall to 'long digit run',
+        // which knows about legitimate numeric boundary constants.
         reason: 'long hex token',
-        pattern: /(?<![0-9a-f])[0-9a-f]{12,}(?![0-9a-f])/i
+        pattern: /(?<![0-9a-f])(?=[0-9]*[a-f])[0-9a-f]{12,}(?![0-9a-f])/i
+    },
+    {
+        // 7–11 hex chars containing both a digit and a letter (git short SHAs,
+        // short hashes). Pure words can't match (no digit); the legitimate
+        // ___hash8 truncation suffix is excluded by the underscore lookbehind.
+        reason: 'short hex hash',
+        pattern: /(?<![0-9a-f_])(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,11}(?![0-9a-f])/i
+    },
+    {
+        reason: 'hex memory address',
+        pattern: /0x[0-9a-f]{6,}(?![0-9a-f])/i
     },
     {
         reason: 'ISO date',
         pattern: /\b\d{4}-\d{2}-\d{2}\b/
+    },
+    {
+        // 2020–2039 keeps date-shaped 8-digit numbers apart from plain counts
+        reason: 'compact date (YYYYMMDD)',
+        pattern: /(?<!\d)20[2-3]\d(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])(?!\d)/
     },
     {
         reason: 'clock time',
@@ -33625,12 +33649,49 @@ const DETECTORS = [
         pattern: /(?<!\d)1[5-9]\d{8}(?:\d{3})?(?!\d)/
     },
     {
-        reason: 'host:port address',
-        pattern: /\b(?:localhost|\d{1,3}(?:\.\d{1,3}){3}):\d{2,5}\b/
+        // Snowflake ids, random int64s, nanotime. Exempts the boundary
+        // constants 2^53−1, 2^63−1 and 2^64−1, which appear in legitimate
+        // limit-handling test names.
+        reason: 'long digit run',
+        pattern: /(?<!\d)(?!(?:9007199254740991|9223372036854775807|18446744073709551615)(?!\d))\d{13,}(?!\d)/
     },
     {
+        reason: 'host:port address',
+        pattern: new RegExp(`\\b(?:localhost|\\d{1,3}(?:\\.\\d{1,3}){3}):${EPHEMERAL_PORT}\\b`)
+    },
+    {
+        reason: 'ephemeral port',
+        pattern: new RegExp(`\\bports?[\\s:=#_-]+${EPHEMERAL_PORT}\\b`, 'i')
+    },
+    {
+        reason: 'process id',
+        pattern: /\bpid[\s:=#_-]*\d{2,}\b/i
+    },
+    {
+        // Counter after a run/build-flavored keyword ("run 48291"). Requires 4+
+        // digits and skips numbers ending in 00 — round counts in stable names
+        // ("run 1000 commands") vastly outnumber round random counters.
+        reason: 'run counter',
+        pattern: /\b(?:run|seed|attempt|retry|iteration|worker|job|build)[\s#_-]*(?!\d*00\b)\d{4,}\b/i
+    },
+    {
+        // Padded base64 only: 16+ token chars containing a digit, closed by
+        // '='/'=='. Unpadded base64 is indistinguishable from long camelCase
+        // identifiers with digits (e.g. testTimeSeriesAddSha256Digest).
+        reason: 'base64 token',
+        pattern: /(?=[A-Za-z0-9+/]*\d)[A-Za-z0-9+/]{16,}={1,2}(?![A-Za-z0-9+/=])/
+    },
+    {
+        // Measured durations embedded in names churn by nature
+        reason: 'measured duration',
+        pattern: /\b(?:took|elapsed)[\s:]+\d+(?:\.\d+)?\s*(?:ms|ns|us|s|sec|secs|seconds|millis|milliseconds)?\b/i
+    },
+    {
+        // Fixed literal paths (/tmp/redis.sock) are stable — measured live; only
+        // paths with a digit in a path segment (mkdtemp-style randomness) flag.
+        // The query string is excluded so unix:///tmp/x.sock?db=2 stays clean.
         reason: 'temp directory path',
-        pattern: /\/tmp\/|\/var\/folders\/|\\Temp\\/i
+        pattern: /(?:\/tmp\/|\/var\/folders\/|\\Temp\\)[^\s?]*\d/i
     }
 ];
 /**
@@ -57272,7 +57333,22 @@ async function run() {
         const otlpEndpoint = coreExports.getInput('otlp-endpoint', { required: true });
         const otlpHeaders = coreExports.getInput('otlp-headers') || '';
         const branchAllowlist = coreExports.getInput('branch-allowlist') || '';
-        const serverVersion = coreExports.getInput('server-version') || '';
+        const serverVersionInput = coreExports.getInput('server-version') || '';
+        const onNondeterministicIds = coreExports.getInput('on-nondeterministic-ids') || '';
+        // Config errors fail hard before any gating, so a misconfigured consumer
+        // learns on the first run — even one on a branch that would not emit.
+        const modeResult = parseNondeterministicIdsMode(onNondeterministicIds);
+        if (!modeResult.success) {
+            coreExports.setFailed(modeResult.error);
+            return;
+        }
+        const nondeterministicIdsMode = modeResult.data;
+        const serverVersionResult = validateServerVersion(serverVersionInput);
+        if (!serverVersionResult.success) {
+            coreExports.setFailed(serverVersionResult.error);
+            return;
+        }
+        const serverVersion = serverVersionResult.data;
         const headers = parseOtlpHeaders(otlpHeaders);
         const metricsNamespace = 'cae';
         const metricsVersion = 'v16';
@@ -57286,7 +57362,7 @@ async function run() {
         const config = {
             repository,
             branch,
-            serverVersion: serverVersion || undefined
+            serverVersion
         };
         coreExports.info(`🔧 Configuring OpenTelemetry CI Visibility`);
         coreExports.info(`   Repository: ${repository}`);
@@ -57308,6 +57384,25 @@ async function run() {
             return;
         }
         coreExports.info(`   Branch gate: ${branchDecision.reason}`);
+        coreExports.info(`📊 Processing JUnit XML files from: ${junitXmlFolder}`);
+        const ingestResult = ingestDir(junitXmlFolder);
+        if (!ingestResult.success) {
+            coreExports.error(`Failed to ingest JUnit XML files: ${ingestResult.error}`);
+            return;
+        }
+        const report = ingestResult.data;
+        if (report.testsuites.length === 0) {
+            coreExports.warning(`No test suites found in ${junitXmlFolder}`);
+            return;
+        }
+        const metricDataPoints = generateMetrics(report, config);
+        coreExports.info(`Generated ${metricDataPoints.length} metrics from ${report.testsuites.length} test suites`);
+        const enforcementResult = enforceNondeterministicTestIds(metricDataPoints, nondeterministicIdsMode);
+        if (!enforcementResult.success) {
+            coreExports.setFailed(enforcementResult.error);
+            return;
+        }
+        const dataPointsToSubmit = enforcementResult.data;
         const resource = resourceFromAttributes({
             [ATTR_SERVICE_NAME]: repository
         });
@@ -57334,29 +57429,15 @@ async function run() {
             ]
         });
         const metricsSubmitter = new MetricsSubmitter(repository, meterProvider, metricsNamespace, metricsVersion);
-        coreExports.info(`📊 Processing JUnit XML files from: ${junitXmlFolder}`);
-        const ingestResult = ingestDir(junitXmlFolder);
-        if (!ingestResult.success) {
-            coreExports.error(`Failed to ingest JUnit XML files: ${ingestResult.error}`);
-            return;
-        }
-        const report = ingestResult.data;
-        if (report.testsuites.length === 0) {
-            coreExports.warning(`No test suites found in ${junitXmlFolder}`);
-            return;
-        }
-        const metricDataPoints = generateMetrics(report, config);
-        coreExports.info(`Generated ${metricDataPoints.length} metrics from ${report.testsuites.length} test suites`);
-        warnOnNondeterministicTestIds(metricDataPoints);
-        if (metricDataPoints.length > METRIC_CARDINALITY_LIMIT) {
-            coreExports.warning(`${metricDataPoints.length} data points exceed the metric cardinality limit (${METRIC_CARDINALITY_LIMIT}); ` +
+        if (dataPointsToSubmit.length > METRIC_CARDINALITY_LIMIT) {
+            coreExports.warning(`${dataPointsToSubmit.length} data points exceed the metric cardinality limit (${METRIC_CARDINALITY_LIMIT}); ` +
                 `the excess is merged into a single otel.metric.overflow point and those tests' durations are lost`);
         }
         // Full dump of what gets exported; visible with ACTIONS_STEP_DEBUG=true
-        for (const dataPoint of metricDataPoints) {
+        for (const dataPoint of dataPointsToSubmit) {
             coreExports.debug(`emit ${dataPoint.metricName} test.id="${dataPoint.attributes['test.id']}" value=${dataPoint.value}`);
         }
-        metricsSubmitter.submitMetrics(metricDataPoints);
+        metricsSubmitter.submitMetrics(dataPointsToSubmit);
         coreExports.info(`Summary: ${report.totals.tests} tests, ${report.totals.failed} failures, ${report.totals.error} errors, ${report.totals.skipped} skipped`);
         await meterProvider.forceFlush();
         const diagOutput = logger.getCapturedOutput();
@@ -57374,15 +57455,27 @@ async function run() {
         coreExports.setFailed(`Action failed: ${errorMessage}`);
     }
 }
-const MAX_REPORTED_SUSPICIOUS_IDS = 10;
-// A run-varying value in a test name (UUID, timestamp, port, temp path)
-// mints a new series every run — the same churn the stable label schema
-// removed. Warn, don't fail: the fix belongs in the test names.
-const warnOnNondeterministicTestIds = (metricDataPoints) => {
-    const suspicious = detectNondeterministicTestIds(metricDataPoints.map((dataPoint) => dataPoint.attributes['test.id']));
-    if (suspicious.length === 0) {
-        return;
+const NONDETERMINISTIC_IDS_MODES = [
+    'warn',
+    'skip',
+    'break'
+];
+const parseNondeterministicIdsMode = (input) => {
+    const mode = input.trim().toLowerCase() || 'warn';
+    const match = NONDETERMINISTIC_IDS_MODES.find((known) => known === mode);
+    if (match) {
+        return { success: true, data: match };
     }
+    return {
+        success: false,
+        error: `Invalid on-nondeterministic-ids value '${input}'. Allowed values: ` +
+            `'warn' (default — report offenders, submit everything), ` +
+            `'skip' (drop offenders' per-test data points, submit the rest), ` +
+            `'break' (fail the build, upload nothing).`
+    };
+};
+const MAX_REPORTED_SUSPICIOUS_IDS = 10;
+const formatSuspiciousTestIds = (suspicious) => {
     const preview = suspicious
         .slice(0, MAX_REPORTED_SUSPICIOUS_IDS)
         .map((entry) => `  - ${entry.testId} (${entry.reasons.join(', ')})`)
@@ -57390,9 +57483,80 @@ const warnOnNondeterministicTestIds = (metricDataPoints) => {
     const overflow = suspicious.length > MAX_REPORTED_SUSPICIOUS_IDS
         ? `\n  ...and ${suspicious.length - MAX_REPORTED_SUSPICIOUS_IDS} more`
         : '';
-    coreExports.warning(`${suspicious.length} test id(s) look nondeterministic — run-varying values in test names mint a new metric series every run:\n` +
-        `${preview}${overflow}\n` +
+    return (`${suspicious.length} test id(s) look nondeterministic — run-varying ` +
+        `values in test names mint a new metric series every run:\n` +
+        `${preview}${overflow}`);
+};
+// A run-varying value in a test name (UUID, timestamp, port, temp path)
+// mints a new series every run — the same churn the stable label schema
+// removed. The mode decides how hard to push back; the real fix always
+// belongs in the test names (or the reporter's name template).
+const enforceNondeterministicTestIds = (metricDataPoints, mode) => {
+    const suspicious = detectNondeterministicTestIds(metricDataPoints.map((dataPoint) => dataPoint.attributes['test.id']));
+    if (suspicious.length === 0) {
+        return { success: true, data: metricDataPoints };
+    }
+    const offenders = formatSuspiciousTestIds(suspicious);
+    if (mode === 'break') {
+        return {
+            success: false,
+            error: `${offenders}\n` +
+                `Nothing was uploaded (on-nondeterministic-ids: break). Fix the ` +
+                `test names (or the reporter's name template), or relax the mode ` +
+                `to 'warn' or 'skip'.`
+        };
+    }
+    if (mode === 'skip') {
+        const suspiciousIds = new Set(suspicious.map((entry) => entry.testId));
+        // Only per-test data points carry test.id; rollups pass through — they
+        // have no test.id label, so a churning name is no cardinality risk
+        // there, and dropping them would distort suite/run totals.
+        const dataPoints = metricDataPoints.filter((dataPoint) => {
+            const testId = dataPoint.attributes['test.id'];
+            return testId === undefined || !suspiciousIds.has(testId);
+        });
+        coreExports.warning(`${offenders}\n` +
+            `Skipping their per-test data points (on-nondeterministic-ids: ` +
+            `skip); run/suite rollups still include them. Fix the test names ` +
+            `(or the reporter's name template) to get their metrics back.`);
+        return { success: true, data: dataPoints };
+    }
+    coreExports.warning(`${offenders}\n` +
         `Fix the test names (or the reporter's name template) to keep metric cardinality bounded.`);
+    return { success: true, data: metricDataPoints };
+};
+const SERVER_VERSION_TRACK = /^\d+\.\d+$/;
+const SERVER_VERSION_ALLOWED = `Allowed values: 'unstable' (server built from master / under ` +
+    `development) or a major.minor version track like '8.4'.`;
+// The server.version label multiplies series per test, so its values must be
+// stable and bounded. Exactly two shapes are allowed: the literal 'unstable'
+// and a 'major.minor' version track. Empty stays allowed — repos without a
+// server under test simply omit the label.
+const validateServerVersion = (input) => {
+    const value = input.trim();
+    if (!value) {
+        return { success: true, data: undefined };
+    }
+    if (value === 'unstable' || SERVER_VERSION_TRACK.test(value)) {
+        return { success: true, data: value };
+    }
+    const reject = (hint) => ({
+        success: false,
+        error: `Invalid server-version '${value}'. ${SERVER_VERSION_ALLOWED} ${hint}`
+    });
+    if (value.toLowerCase() === 'unstable') {
+        return reject(`Use lowercase: 'unstable'.`);
+    }
+    const patchVersion = value.match(/^(\d+\.\d+)(?:\.\d+)+$/);
+    if (patchVersion) {
+        return reject(`Patch releases collapse into their version track — pass '${patchVersion[1]}'.`);
+    }
+    const suffixedVersion = value.match(/^(\d+\.\d+)(?:\.\d+)*[-+].+$/);
+    if (suffixedVersion) {
+        return reject(`Release candidates and previews collapse into their version track — pass '${suffixedVersion[1]}'.`);
+    }
+    return reject(`Image tags, commit SHAs and other run-varying values would mint new ` +
+        `metric series every run — see the README section 'Server version convention'.`);
 };
 // Branch names multiply against test.id cardinality, and short-lived branch
 // values (PRs) never repeat — so by default metrics are emitted only for the
