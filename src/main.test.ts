@@ -506,16 +506,35 @@ describe('main.ts', () => {
     }
   )
 
+  // Raw rejected values stay out of the it.each titles: jest-junit writes
+  // titles into this repo's own junit output, which the self-report run
+  // feeds back through the detector — a literal SHA in a title gets flagged.
   it.each([
-    ['8.4.0', "pass '8.4'"],
-    ['8.10-rc2', "pass '8.10'"],
-    ['rs-7.4', 'Server version convention'],
-    ['latest', 'Server version convention'],
-    ['3f2b8c9a77aa4bde9c012f4a5b6c7d8e1a2b3c4d', 'Server version convention'],
-    ['2026-07-29T12:30:45Z', 'Server version convention']
+    { kind: 'a patch version', value: '8.4.0', hint: "pass '8.4'" },
+    { kind: 'an rc suffix', value: '8.10-rc2', hint: "pass '8.10'" },
+    {
+      kind: 'a flavor prefix',
+      value: 'rs-7.4',
+      hint: 'Server version convention'
+    },
+    {
+      kind: 'an image tag',
+      value: 'latest',
+      hint: 'Server version convention'
+    },
+    {
+      kind: 'a git SHA',
+      value: '3f2b8c9a77aa4bde9c012f4a5b6c7d8e1a2b3c4d',
+      hint: 'Server version convention'
+    },
+    {
+      kind: 'a timestamp',
+      value: '2026-07-29T12:30:45Z',
+      hint: 'Server version convention'
+    }
   ])(
-    'should reject server-version %s with an actionable hint',
-    async (serverVersion, expectedHint) => {
+    'should reject server-version $kind with an actionable hint',
+    async ({ value: serverVersion, hint: expectedHint }) => {
       writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
 
       mockInputs({
