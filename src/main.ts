@@ -135,8 +135,8 @@ export async function run(): Promise<void> {
     } else {
       core.info(
         `   Server version: (not set) — if this repo tests against multiple ` +
-          `server versions, their results will share one series per test; ` +
-          `set the server-version input to split them`
+          `server versions, their results will be mixed together per test; ` +
+          `set the server-version input to track each version separately`
       )
     }
     core.info(`   Commit: ${commitSha}`)
@@ -173,8 +173,10 @@ export async function run(): Promise<void> {
     }
 
     const metricDataPoints = generateMetrics(report, config)
-    core.info(
-      `Generated ${metricDataPoints.length} metrics from ${report.testsuites.length} test suites`
+    // Raw record() count is internal plumbing — logging it at info level
+    // reads like a series count and alarms reviewers; series are logged below
+    core.debug(
+      `Generated ${metricDataPoints.length} metric data points from ${report.testsuites.length} test suites`
     )
 
     const enforcementResult = enforceNondeterministicTestIds(
@@ -225,24 +227,53 @@ export async function run(): Promise<void> {
       metricsVersion
     )
 
-    if (dataPointsToSubmit.length > METRIC_CARDINALITY_LIMIT) {
-      core.warning(
-        `${dataPointsToSubmit.length} data points exceed the metric cardinality limit (${METRIC_CARDINALITY_LIMIT}); ` +
-          `the excess is merged into a single otel.metric.overflow point and those tests' durations are lost`
-      )
+    const uniqueSeriesByMetric = countUniqueSeriesByMetric(dataPointsToSubmit)
+    const testSeries = uniqueSeriesByMetric.get('test_duration_seconds') ?? 0
+    const totalUniqueSeries = [...uniqueSeriesByMetric.values()].reduce(
+      (sum, count) => sum + count,
+      0
+    )
+    core.info(
+      `Submitting one duration per distinct test: ${testSeries} distinct ` +
+        `tests, plus ${totalUniqueSeries - testSeries} run/suite summary ` +
+        `values. A test that ran more than once in this CI run (retries, ` +
+        `matrix configurations) is still submitted as one test — the last ` +
+        `parsed duration wins.`
+    )
+
+    for (const [metricName, uniqueSeries] of uniqueSeriesByMetric) {
+      if (uniqueSeries > METRIC_CARDINALITY_LIMIT) {
+        core.warning(
+          `Metric ${metricName} tracks ${uniqueSeries} distinct label ` +
+            `combinations, more than the limit of ${METRIC_CARDINALITY_LIMIT}. ` +
+            `Everything past the limit is folded into a single "overflow" ` +
+            `bucket, and those tests' individual durations are lost. This ` +
+            `usually means test names embed run-varying values (ids, ` +
+            `timestamps) — fix the test names so every test keeps its own history.`
+        )
+      }
     }
 
     // Full dump of what gets exported; visible with ACTIONS_STEP_DEBUG=true
     for (const dataPoint of dataPointsToSubmit) {
       core.debug(
-        `emit ${dataPoint.metricName} test.id="${dataPoint.attributes['test.id']}" value=${dataPoint.value}`
+        [
+          'emit',
+          dataPoint.metricName,
+          describeDataPointId(dataPoint),
+          `value=${dataPoint.value}`
+        ]
+          .filter(Boolean)
+          .join(' ')
       )
     }
 
     metricsSubmitter.submitMetrics(dataPointsToSubmit)
 
     core.info(
-      `Summary: ${report.totals.tests} tests, ${report.totals.failed} failures, ${report.totals.error} errors, ${report.totals.skipped} skipped`
+      `Summary: ${report.totals.tests} test executions parsed — ` +
+        `${report.totals.passed} passed, ${report.totals.failed} failed, ` +
+        `${report.totals.error} errored, ${report.totals.skipped} skipped`
     )
 
     await meterProvider.forceFlush()
@@ -260,6 +291,42 @@ export async function run(): Promise<void> {
     core.error(`❌ CI visibility metrics submission failed: ${errorMessage}`)
     core.setFailed(`Action failed: ${errorMessage}`)
   }
+}
+
+// The SDK's aggregationCardinalityLimit applies to unique attribute sets per
+// instrument, not to record() calls — reruns of the same test land on one
+// series, so only distinct attribute sets can overflow.
+const countUniqueSeriesByMetric = (
+  dataPoints: readonly TMetricDataPoint[]
+): ReadonlyMap<string, number> => {
+  const seriesByMetric = new Map<string, Set<string>>()
+
+  for (const dataPoint of dataPoints) {
+    const seriesKey = JSON.stringify(
+      Object.entries(dataPoint.attributes).sort(([a], [b]) =>
+        a < b ? -1 : a > b ? 1 : 0
+      )
+    )
+    const series = seriesByMetric.get(dataPoint.metricName) ?? new Set<string>()
+    series.add(seriesKey)
+    seriesByMetric.set(dataPoint.metricName, series)
+  }
+
+  return new Map(
+    [...seriesByMetric].map(([metricName, series]) => [metricName, series.size])
+  )
+}
+
+// Per-test points carry test.id, suite rollups suite.id, run-status rollups
+// test.result.status; the run-duration rollup has none of the three.
+const describeDataPointId = (dataPoint: TMetricDataPoint): string => {
+  for (const key of ['test.id', 'suite.id', 'test.result.status'] as const) {
+    const value = dataPoint.attributes[key]
+    if (value !== undefined) {
+      return `${key}="${value}"`
+    }
+  }
+  return ''
 }
 
 type TNondeterministicIdsMode = 'warn' | 'skip' | 'break'
@@ -305,8 +372,10 @@ const formatSuspiciousTestIds = (
       : ''
 
   return (
-    `${suspicious.length} test id(s) look nondeterministic — run-varying ` +
-    `values in test names mint a new metric series every run:\n` +
+    `${suspicious.length} test id(s) look nondeterministic — these test ` +
+    `names change on every run (embedded ids, timestamps, ports), so ` +
+    `instead of extending one duration history per test they start a ` +
+    `brand-new one on each run:\n` +
     `${preview}${overflow}`
   )
 }
@@ -352,9 +421,9 @@ const enforceNondeterministicTestIds = (
 
     core.warning(
       `${offenders}\n` +
-        `Skipping their per-test data points (on-nondeterministic-ids: ` +
-        `skip); run/suite rollups still include them. Fix the test names ` +
-        `(or the reporter's name template) to get their metrics back.`
+        `Skipping their per-test durations (on-nondeterministic-ids: ` +
+        `skip); they still count toward the run/suite totals. Fix the test ` +
+        `names (or the reporter's name template) to get their metrics back.`
     )
 
     return { success: true, data: dataPoints }
@@ -362,7 +431,8 @@ const enforceNondeterministicTestIds = (
 
   core.warning(
     `${offenders}\n` +
-      `Fix the test names (or the reporter's name template) to keep metric cardinality bounded.`
+      `Fix the test names (or the reporter's name template) so each test ` +
+      `keeps one continuous duration history.`
   )
 
   return { success: true, data: metricDataPoints }

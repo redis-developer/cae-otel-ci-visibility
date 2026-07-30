@@ -404,7 +404,7 @@ describe('main.ts', () => {
     await run()
 
     expect(mockCore.warning).toHaveBeenCalledWith(
-      expect.stringContaining('Skipping their per-test data points')
+      expect.stringContaining('Skipping their per-test durations')
     )
     expect(mockMetricsSubmitter.submitMetrics).toHaveBeenCalledTimes(1)
     expect(mockCore.setFailed).not.toHaveBeenCalled()
@@ -596,6 +596,74 @@ describe('main.ts', () => {
       expect.stringContaining('look nondeterministic')
     )
   })
+
+  // The SDK cardinality limit counts unique attribute sets per instrument,
+  // not record() calls — reruns of one test collapse into a single series.
+  it('should not warn when many raw points collapse below the cardinality limit', async () => {
+    const rerunTestcases = Array.from(
+      { length: 21000 },
+      () => '<testcase classname="BigSuite" name="test_rerun" time="0.001"/>'
+    ).join('\n')
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<testsuites time="100.0">
+  <testsuite name="BigSuite" time="100.0">
+${rerunTestcases}
+  </testsuite>
+</testsuites>`
+    writeFileSync(join(testDir, 'reruns.xml'), xml)
+
+    mockInputs({
+      'junit-xml-folder': testDir,
+      'otlp-endpoint': 'http://localhost:4318/v1/metrics'
+    })
+
+    await run()
+
+    expect(mockCore.warning).not.toHaveBeenCalledWith(
+      expect.stringContaining('distinct label combinations')
+    )
+    // 21000 per-test points + 4 run-status + 1 run-duration + 1 suite rollup
+    // land on 1 + 6 unique series — the log must say so
+    expect(mockCore.info).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '1 distinct tests, plus 6 run/suite summary values'
+      )
+    )
+    expect(mockMetricsSubmitter.submitMetrics).toHaveBeenCalledTimes(1)
+    expect(mockCore.setFailed).not.toHaveBeenCalled()
+  }, 30000)
+
+  it('should warn when one metric exceeds the cardinality limit in unique attribute sets', async () => {
+    const uniqueTestcases = Array.from(
+      { length: 20001 },
+      (_, index) =>
+        `<testcase classname="BigSuite" name="test_case_${index}" time="0.001"/>`
+    ).join('\n')
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<testsuites time="100.0">
+  <testsuite name="BigSuite" time="100.0">
+${uniqueTestcases}
+  </testsuite>
+</testsuites>`
+    writeFileSync(join(testDir, 'unique.xml'), xml)
+
+    mockInputs({
+      'junit-xml-folder': testDir,
+      'otlp-endpoint': 'http://localhost:4318/v1/metrics'
+    })
+
+    await run()
+
+    expect(mockCore.warning).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Metric test_duration_seconds tracks 20001 distinct label combinations'
+      )
+    )
+    expect(mockCore.warning).toHaveBeenCalledWith(
+      expect.stringContaining('more than the limit of 20000')
+    )
+    expect(mockMetricsSubmitter.submitMetrics).toHaveBeenCalledTimes(1)
+  }, 30000)
 
   it('should emit when the default branch cannot be determined', async () => {
     writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
