@@ -685,21 +685,92 @@ describe('JUnit XML File System Ingestion', () => {
     expect(genSuite!.totals.cumulativeTime).toBe(0.004)
   })
 
-  test('should require time attribute on testsuites element', () => {
+  test('should fall back to computed totals when testsuites has no time attribute', () => {
     const xmlWithoutTime = `<?xml version="1.0"?>
       <testsuites name="test" tests="1" failures="0" errors="0">
-        <testsuite name="TestSuite" time="1.0">
+        <testsuite name="TestSuite" time="1.5">
           <testcase name="test1" classname="Test" time="1.0"/>
         </testsuite>
       </testsuites>`
 
-    const result = parseJUnitXML(xmlWithoutTime)
+    const result = expectSuccess(parseJUnitXML(xmlWithoutTime))
+
+    expect(result.totals.tests).toBe(1)
+    expect(result.totals.time).toBe(1.5)
+    expect(result.totals.cumulativeTime).toBe(1.5)
+  })
+
+  test('should keep the root time attribute verbatim when present', () => {
+    const xmlWithTime = `<?xml version="1.0"?>
+      <testsuites name="test" time="9.5">
+        <testsuite name="TestSuite" time="1.5">
+          <testcase name="test1" classname="Test" time="1.0"/>
+        </testsuite>
+      </testsuites>`
+
+    const result = expectSuccess(parseJUnitXML(xmlWithTime))
+
+    expect(result.totals.time).toBe(9.5)
+    expect(result.totals.cumulativeTime).toBe(1.5)
+  })
+
+  test('should parse pytest-shaped XML without a root time attribute', () => {
+    const result = expectSuccess(
+      ingestFile('src/__test-fixtures__/pytest-junit.xml')
+    )
+
+    expect(result.totals.tests).toBe(3)
+    expect(result.totals.passed).toBe(2)
+    expect(result.totals.skipped).toBe(1)
+    // Root time falls back to the sum of the suites' time attributes
+    expect(result.totals.time).toBe(739.722)
+    expect(result.totals.cumulativeTime).toBe(739.722)
+
+    const suite = result.testsuites[0]!
+    expect(suite.name).toBe('pytest')
+    expect(suite.totals.time).toBe(739.722)
+    expect(suite.totals.cumulativeTime).toBe(0.07)
+  })
+
+  test('should reject a testsuites element with no testsuite children', () => {
+    const result = parseJUnitXML('<testsuites time="1.0"></testsuites>')
+
     expect(result.success).toBe(false)
     if (result.success) {
       throw new Error('Expected parsing to fail but it succeeded')
     }
-    expect(result.error).toBe(
-      'testsuites element is missing required time attribute'
-    )
+    expect(result.error).toBe('XML does not contain any testsuite elements')
+  })
+
+  test('should surface the first-parse error when a testsuites-rooted doc fails to parse', () => {
+    try {
+      mkdirSync(testDir, { recursive: true })
+
+      const depth = 22
+      const deepXml =
+        '<testsuites time="1.0">' +
+        Array.from(
+          { length: depth },
+          (_, level) => `<testsuite name="level${level}" time="0.1">`
+        ).join('') +
+        '<testcase name="test1" classname="Test" time="0.1"/>' +
+        '</testsuite>'.repeat(depth) +
+        '</testsuites>'
+
+      writeFileSync(join(testDir, 'too-deep.xml'), deepXml)
+
+      const result = ingestFile(join(testDir, 'too-deep.xml'))
+
+      expect(result.success).toBe(false)
+      if (result.success) {
+        throw new Error('Expected parsing to fail but it succeeded')
+      }
+      // The multi-root fallback rewraps the doc in <testsuites>; that reparse
+      // must not mask the real error with a TypeError from parseSuite(undefined)
+      expect(result.error).toContain('Maximum nesting depth of 20 exceeded')
+      expect(result.error).not.toContain('Cannot read properties')
+    } finally {
+      rmSync(testDir, { recursive: true, force: true })
+    }
   })
 })

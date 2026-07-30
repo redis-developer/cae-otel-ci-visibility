@@ -442,6 +442,15 @@ export const parseJUnitXML = (xmlContent: string): TResult<TJUnitReport> => {
 
   const parsedSuites: TSuite[] = []
   for (const suite of testsuites) {
+    // A <testsuites> root without <testsuite> children (or an unrecognized
+    // root element) yields undefined entries; report instead of throwing so
+    // parseMultiRootXML can surface the original parse error.
+    if (suite == null) {
+      return {
+        success: false,
+        error: 'XML does not contain any testsuite elements'
+      }
+    }
     const suiteResult = parseSuite(suite)
     if (!suiteResult.success) {
       return suiteResult
@@ -475,22 +484,17 @@ export const parseJUnitXML = (xmlContent: string): TResult<TJUnitReport> => {
   if (!result.testsuites) {
     return {
       success: false,
-      error: 'XML must have a testsuites wrapper element with time attribute'
+      error: 'XML must have a testsuites wrapper element'
     }
   }
 
-  if (!result.testsuites['@_time']) {
-    return {
-      success: false,
-      error: 'testsuites element is missing required time attribute'
-    }
-  }
-
+  // pytest never writes a time attribute on the root <testsuites>, so it is
+  // optional: fall back to the computed total, same as suite-level totals.
   const originalTestsuitesTime = parsePositiveFloat(result.testsuites['@_time'])
 
   const reportTotals = {
     ...calculatedTotals,
-    time: originalTestsuitesTime,
+    time: originalTestsuitesTime || roundTime(calculatedTotals.time),
     cumulativeTime: roundTime(calculatedTotals.time)
   }
 
