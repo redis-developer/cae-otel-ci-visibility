@@ -33225,6 +33225,15 @@ const parseJUnitXML = (xmlContent) => {
         : [result.testsuite];
     const parsedSuites = [];
     for (const suite of testsuites) {
+        // A <testsuites> root without <testsuite> children (or an unrecognized
+        // root element) yields undefined entries; report instead of throwing so
+        // parseMultiRootXML can surface the original parse error.
+        if (suite == null) {
+            return {
+                success: false,
+                error: 'XML does not contain any testsuite elements'
+            };
+        }
         const suiteResult = parseSuite(suite);
         if (!suiteResult.success) {
             return suiteResult;
@@ -33251,19 +33260,15 @@ const parseJUnitXML = (xmlContent) => {
     if (!result.testsuites) {
         return {
             success: false,
-            error: 'XML must have a testsuites wrapper element with time attribute'
+            error: 'XML must have a testsuites wrapper element'
         };
     }
-    if (!result.testsuites['@_time']) {
-        return {
-            success: false,
-            error: 'testsuites element is missing required time attribute'
-        };
-    }
+    // pytest never writes a time attribute on the root <testsuites>, so it is
+    // optional: fall back to the computed total, same as suite-level totals.
     const originalTestsuitesTime = parsePositiveFloat(result.testsuites['@_time']);
     const reportTotals = {
         ...calculatedTotals,
-        time: originalTestsuitesTime,
+        time: originalTestsuitesTime || roundTime(calculatedTotals.time),
         cumulativeTime: roundTime(calculatedTotals.time)
     };
     const reportData = {
@@ -57380,8 +57385,8 @@ async function run() {
         }
         else {
             coreExports.info(`   Server version: (not set) — if this repo tests against multiple ` +
-                `server versions, their results will share one series per test; ` +
-                `set the server-version input to split them`);
+                `server versions, their results will be mixed together per test; ` +
+                `set the server-version input to track each version separately`);
         }
         coreExports.info(`   Commit: ${commitSha}`);
         coreExports.info(`   JUnit XML Folder: ${junitXmlFolder}`);
@@ -57404,7 +57409,9 @@ async function run() {
             return;
         }
         const metricDataPoints = generateMetrics(report, config);
-        coreExports.info(`Generated ${metricDataPoints.length} metrics from ${report.testsuites.length} test suites`);
+        // Raw record() count is internal plumbing — logging it at info level
+        // reads like a series count and alarms reviewers; series are logged below
+        coreExports.debug(`Generated ${metricDataPoints.length} metric data points from ${report.testsuites.length} test suites`);
         const enforcementResult = enforceNondeterministicTestIds(metricDataPoints, nondeterministicIdsMode);
         if (!enforcementResult.success) {
             coreExports.setFailed(enforcementResult.error);
@@ -57437,16 +57444,39 @@ async function run() {
             ]
         });
         const metricsSubmitter = new MetricsSubmitter(repository, meterProvider, metricsNamespace, metricsVersion);
-        if (dataPointsToSubmit.length > METRIC_CARDINALITY_LIMIT) {
-            coreExports.warning(`${dataPointsToSubmit.length} data points exceed the metric cardinality limit (${METRIC_CARDINALITY_LIMIT}); ` +
-                `the excess is merged into a single otel.metric.overflow point and those tests' durations are lost`);
+        const uniqueSeriesByMetric = countUniqueSeriesByMetric(dataPointsToSubmit);
+        const testSeries = uniqueSeriesByMetric.get('test_duration_seconds') ?? 0;
+        const totalUniqueSeries = [...uniqueSeriesByMetric.values()].reduce((sum, count) => sum + count, 0);
+        coreExports.info(`Submitting one duration per distinct test: ${testSeries} distinct ` +
+            `tests, plus ${totalUniqueSeries - testSeries} run/suite summary ` +
+            `values. A test that ran more than once in this CI run (retries, ` +
+            `matrix configurations) is still submitted as one test — the last ` +
+            `parsed duration wins.`);
+        for (const [metricName, uniqueSeries] of uniqueSeriesByMetric) {
+            if (uniqueSeries > METRIC_CARDINALITY_LIMIT) {
+                coreExports.warning(`Metric ${metricName} tracks ${uniqueSeries} distinct label ` +
+                    `combinations, more than the limit of ${METRIC_CARDINALITY_LIMIT}. ` +
+                    `Everything past the limit is folded into a single "overflow" ` +
+                    `bucket, and those tests' individual durations are lost. This ` +
+                    `usually means test names embed run-varying values (ids, ` +
+                    `timestamps) — fix the test names so every test keeps its own history.`);
+            }
         }
         // Full dump of what gets exported; visible with ACTIONS_STEP_DEBUG=true
         for (const dataPoint of dataPointsToSubmit) {
-            coreExports.debug(`emit ${dataPoint.metricName} test.id="${dataPoint.attributes['test.id']}" value=${dataPoint.value}`);
+            coreExports.debug([
+                'emit',
+                dataPoint.metricName,
+                describeDataPointId(dataPoint),
+                `value=${dataPoint.value}`
+            ]
+                .filter(Boolean)
+                .join(' '));
         }
         metricsSubmitter.submitMetrics(dataPointsToSubmit);
-        coreExports.info(`Summary: ${report.totals.tests} tests, ${report.totals.failed} failures, ${report.totals.error} errors, ${report.totals.skipped} skipped`);
+        coreExports.info(`Summary: ${report.totals.tests} test executions parsed — ` +
+            `${report.totals.passed} passed, ${report.totals.failed} failed, ` +
+            `${report.totals.error} errored, ${report.totals.skipped} skipped`);
         await meterProvider.forceFlush();
         const diagOutput = logger.getCapturedOutput();
         if (diagOutput.includes('metrics export failed')) {
@@ -57463,6 +57493,30 @@ async function run() {
         coreExports.setFailed(`Action failed: ${errorMessage}`);
     }
 }
+// The SDK's aggregationCardinalityLimit applies to unique attribute sets per
+// instrument, not to record() calls — reruns of the same test land on one
+// series, so only distinct attribute sets can overflow.
+const countUniqueSeriesByMetric = (dataPoints) => {
+    const seriesByMetric = new Map();
+    for (const dataPoint of dataPoints) {
+        const seriesKey = JSON.stringify(Object.entries(dataPoint.attributes).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0));
+        const series = seriesByMetric.get(dataPoint.metricName) ?? new Set();
+        series.add(seriesKey);
+        seriesByMetric.set(dataPoint.metricName, series);
+    }
+    return new Map([...seriesByMetric].map(([metricName, series]) => [metricName, series.size]));
+};
+// Per-test points carry test.id, suite rollups suite.id, run-status rollups
+// test.result.status; the run-duration rollup has none of the three.
+const describeDataPointId = (dataPoint) => {
+    for (const key of ['test.id', 'suite.id', 'test.result.status']) {
+        const value = dataPoint.attributes[key];
+        if (value !== undefined) {
+            return `${key}="${value}"`;
+        }
+    }
+    return '';
+};
 const NONDETERMINISTIC_IDS_MODES = [
     'warn',
     'skip',
@@ -57491,8 +57545,10 @@ const formatSuspiciousTestIds = (suspicious) => {
     const overflow = suspicious.length > MAX_REPORTED_SUSPICIOUS_IDS
         ? `\n  ...and ${suspicious.length - MAX_REPORTED_SUSPICIOUS_IDS} more`
         : '';
-    return (`${suspicious.length} test id(s) look nondeterministic — run-varying ` +
-        `values in test names mint a new metric series every run:\n` +
+    return (`${suspicious.length} test id(s) look nondeterministic — these test ` +
+        `names change on every run (embedded ids, timestamps, ports), so ` +
+        `instead of extending one duration history per test they start a ` +
+        `brand-new one on each run:\n` +
         `${preview}${overflow}`);
 };
 // A run-varying value in a test name (UUID, timestamp, port, temp path)
@@ -57524,13 +57580,14 @@ const enforceNondeterministicTestIds = (metricDataPoints, mode) => {
             return testId === undefined || !suspiciousIds.has(testId);
         });
         coreExports.warning(`${offenders}\n` +
-            `Skipping their per-test data points (on-nondeterministic-ids: ` +
-            `skip); run/suite rollups still include them. Fix the test names ` +
-            `(or the reporter's name template) to get their metrics back.`);
+            `Skipping their per-test durations (on-nondeterministic-ids: ` +
+            `skip); they still count toward the run/suite totals. Fix the test ` +
+            `names (or the reporter's name template) to get their metrics back.`);
         return { success: true, data: dataPoints };
     }
     coreExports.warning(`${offenders}\n` +
-        `Fix the test names (or the reporter's name template) to keep metric cardinality bounded.`);
+        `Fix the test names (or the reporter's name template) so each test ` +
+        `keeps one continuous duration history.`);
     return { success: true, data: metricDataPoints };
 };
 const SERVER_VERSION_TRACK = /^\d+\.\d+$/;
