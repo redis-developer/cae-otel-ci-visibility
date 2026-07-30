@@ -23,7 +23,8 @@ set -e
 # 7. Set 'is_major_release' variable
 # 8. Point separate major release tag (e.g. v1, v2) to the new release
 # 9. Push the new tags (with commits, if any) to remote
-# 10. If this is a major release, create a 'releases/v#' branch and push
+# 10. Sync the 'releases/v#' branch: created on a major release,
+#     fast-forwarded to the new release otherwise
 #
 # Usage:
 #
@@ -121,12 +122,20 @@ else
 	echo -e "Tags: ${BOLD_GREEN}$latest_major_release_tag${OFF} and ${BOLD_GREEN}$new_tag${OFF} pushed to remote"
 fi
 
-# 10. If this is a major release, create a 'releases/v#' branch and push
+# 10. Sync the 'releases/v#' branch with the new release
 if [ $is_major_release = 'yes' ]; then
 	git branch "releases/$new_major_release_tag" "$new_major_release_tag"
 	echo -e "Branch: ${BOLD_BLUE}releases/$new_major_release_tag${OFF} created from ${BOLD_BLUE}$new_major_release_tag${OFF} tag"
 	git push --set-upstream $git_remote "releases/$new_major_release_tag"
 	echo -e "Branch: ${BOLD_GREEN}releases/$new_major_release_tag${OFF} pushed to remote"
+else
+	# Fast-forward the major's release branch so it always points at the
+	# latest release of its line. The tag is peeled to its commit
+	# ('^{commit}') because an annotated tag object cannot be pushed to a
+	# branch ref. A plain (non-force) push refuses non-fast-forward
+	# updates, so a diverged branch fails loudly instead of losing work.
+	git push $git_remote "$new_tag^{commit}:refs/heads/releases/$new_major_release_tag"
+	echo -e "Branch: ${BOLD_GREEN}releases/$new_major_release_tag${OFF} fast-forwarded to ${BOLD_GREEN}$new_tag${OFF}"
 fi
 
 # Completed
