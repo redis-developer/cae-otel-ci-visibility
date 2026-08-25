@@ -52,7 +52,7 @@
     },
     "title": "Repo Health (v16)",
     "tags": ["tests", "performance", "regression", "v16"],
-    "description": "Health check for one repository: its slowest tests, its biggest slowdowns, and its gradual creepers. Pick your repository first; click any test name in the tables to debug it on the Test Details dashboard.",
+    "description": "The health of one repository: its slowest tests, its largest changes, and its gradual slowdowns. Select a repository first. Click any test name to open it in Test Details.",
     "links": [
       {
         "title": "Test Regressions",
@@ -295,7 +295,7 @@
               "transformations": []
             }
           },
-          "description": "How many test + server-version combinations are currently being tracked.",
+          "description": "The number of combinations of test name and server version that this repository reports.",
           "id": 1,
           "links": [],
           "title": "Tests tracked",
@@ -377,7 +377,7 @@
               "transformations": []
             }
           },
-          "description": "How many tests are slower right now than they used to be. A test counts only if all three are true: it is more than the chosen threshold slower than its usual duration, the slowdown is at least 1 second of real time, and there is enough history (10+ past measurements) to be confident. 0 means everything is running at its normal speed.",
+          "description": "The number of regressed tests in this repository. A test is regressed when all three are true: it is more than the slowdown threshold slower than its typical (baseline) duration, the slowdown is more than 1 second, and the baseline window has 10 or more runs. A healthy value is 0.",
           "id": 2,
           "links": [],
           "title": "Regressed tests now",
@@ -463,7 +463,7 @@
               "transformations": []
             }
           },
-          "description": "How long ago this repository last reported test results. If this grows beyond a day or two, the CI pipeline or the metrics reporting is probably broken - fix that before trusting the rest of this dashboard.",
+          "description": "The time since this repository last reported test results. A healthy value is below the repository's CI interval, usually one day. A larger value means the CI job or the metrics upload is broken. Repair it before you trust the rest of this board.",
           "id": 3,
           "links": [],
           "title": "Hours since last run",
@@ -554,7 +554,7 @@
               "transformations": []
             }
           },
-          "description": "Combined duration of the latest test runs for the selected repository, summed across server versions.",
+          "description": "The total duration of this repository's latest runs, added across server versions.",
           "id": 4,
           "links": [],
           "title": "Total test time (latest runs)",
@@ -1007,7 +1007,7 @@
               ]
             }
           },
-          "description": "The 100 slowest tests in this repository (typical duration over the recent window), one row per test per server version. Click a test name to add it to the timeline at the bottom.",
+          "description": "The 100 tests with the largest typical (recent) duration, one row per combination of test name and server version. Click a test name to open it in Test Details.",
           "id": 5,
           "links": [],
           "title": "Top 100 slowest tests",
@@ -1645,7 +1645,7 @@
               ]
             }
           },
-          "description": "The 100 tests that changed most against their own history (before a baseline exists: the slowest). Click a test name to add it to the timeline at the bottom.",
+          "description": "The 100 tests with the largest change against their own baseline. Before a baseline exists, the table shows the slowest tests instead. Click a test name to open it in Test Details.",
           "id": 6,
           "links": [],
           "title": "Tests that changed the most (recent vs baseline)",
@@ -1912,7 +1912,7 @@
               "transformations": []
             }
           },
-          "description": "This repository's total CI test time now compared with three weeks ago; the worst server version is shown (per-version lines live on the Trends board). 1.00 means unchanged, 1.10 means 10% slower. Consistently above 1 means the whole suite is slowly getting slower. Shows — until three weeks of history exists.",
+          "description": "This repository's total test time now, divided by its total test time three weeks ago. The worst server version is shown. 1.00 = no change; 1.10 = 10% slower. A healthy value stays near 1.00. A value that stays above 1.00 means the full suite becomes slower. Shows \"-\" until three weeks of history exist.",
           "id": 9,
           "links": [],
           "title": "Test time vs 3 weeks ago",
@@ -2137,7 +2137,7 @@
               ]
             }
           },
-          "description": "Each test's typical duration this week compared with three weeks ago, worst 50 shown (only slowdowns bigger than a quarter of a second). Catches tests that got slower a little at a time — the table above compares against a recent baseline, which drifts along with gradual slowdowns and never alarms. \"runs counted\" is how many runs the three-weeks-ago week had. Click a test name to add it to the timeline at the bottom. Fills in once a month of history exists; '—' until then.",
+          "description": "Each test's typical duration this week, compared with three weeks ago. The 50 largest slowdowns are shown; slowdowns below 0.25 seconds are hidden. This panel finds tests that became slower in small steps - the table above compares with a recent baseline and does not find them. \"runs counted\" is the number of runs three weeks ago. Click a test name to open it in Test Details. Shows \"-\" until one month of history exists.",
           "id": 10,
           "links": [],
           "title": "Tests gradually getting slower (this week vs 3 weeks ago)",

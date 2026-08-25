@@ -27,7 +27,7 @@
       }
     ],
     "cursorSync": "Off",
-    "description": "Debug view for one or more selected tests: duration timeline, slowdown signal, per-server-version comparison and whole-run context. Arrive here by clicking a test name on the Regressions, Repo Health or Trends boards, or pick tests with the Test name selector.",
+    "description": "Debug view for the selected tests: duration over time, comparison with the baseline, comparison per server version, and the health of the whole run. Open this board from a test name on the Regressions, Repo Health or Trends boards, or select tests with the Test name selector.",
     "editable": true,
     "links": [
       {
@@ -331,7 +331,7 @@
               "transformations": []
             }
           },
-          "description": "Duration over time for the tests you selected - one line per server version. Add more tests via the Test name selector or by clicking rows in the details table below. Each point is the slowest run of that day, so spikes stay visible.",
+          "description": "The duration of each selected test over time, one line per server version. Each point is the slowest run of that day, so spikes stay visible. Add tests with the Test name selector, or click rows in the details table below.",
           "id": 1,
           "links": [],
           "title": "Duration timeline for selected tests",
@@ -469,7 +469,7 @@
               "transformations": []
             }
           },
-          "description": "How the selected tests compare with their own usual duration, over time. 1 means running at the usual speed; the dashed red line is the slowdown threshold. A short spike is one bad run; a line that settles above the threshold is a real regression, and a slow climb is gradual slowdown.",
+          "description": "The duration of each selected test, divided by its own typical (baseline) duration, over time. 1 = the usual speed. The dashed red line is the slowdown threshold. A short spike is one bad run. A line that stays above the threshold is a regression. A slow climb is a gradual slowdown.",
           "id": 2,
           "links": [],
           "title": "Times slower than usual",
@@ -611,7 +611,7 @@
               "transformations": []
             }
           },
-          "description": "How many times each selected test ran per day. Gaps or drops mean the test (or its CI job) stopped running - treat the timeline above with care around those days.",
+          "description": "The number of runs of each selected test, per day. A gap means the test or its CI job did not run. Be careful with the timeline above around those days.",
           "id": 3,
           "links": [],
           "title": "Runs counted per day",
@@ -725,7 +725,7 @@
               "transformations": []
             }
           },
-          "description": "Typical (recent) duration of each selected test, one bar per test + server version combination. Bars of similar length mean the test behaves the same everywhere; one long bar means it is only slow on that version.",
+          "description": "The typical (recent) duration of each selected test, one bar per combination of test name and server version. Bars of equal length mean the test behaves the same on every version. One long bar means the test is slow on that version only.",
           "id": 4,
           "links": [],
           "title": "Typical duration per server version (recent)",
@@ -816,7 +816,7 @@
               "transformations": []
             }
           },
-          "description": "How long ago each selected test last reported a result. If this grows beyond the usual CI cadence, the test was removed, renamed or its job is broken - the timeline above is frozen, not healthy.",
+          "description": "The time since each selected test last reported a result. A healthy value is below the repository's CI interval. A larger value means the test was removed, renamed, or its job is broken. The timeline above then shows old data.",
           "id": 5,
           "links": [],
           "title": "Hours since this test last ran",
@@ -1286,7 +1286,7 @@
               ]
             }
           },
-          "description": "Exact numbers for the tests currently shown in the timeline: typical recent duration, baseline, change and verdict per server version.",
+          "description": "The exact numbers for the selected tests, per server version: typical (recent), typical (baseline), change, runs counted, and verdict. Click a row to add that test to the selection.",
           "id": 6,
           "links": [],
           "title": "Selected tests - details",
@@ -1545,7 +1545,7 @@
               "transformations": []
             }
           },
-          "description": "Failed and errored test counts for the whole run of the selected repository - not just the selected tests. If the run was red when a selected test spiked, the spike may be collateral damage of a bad run rather than a regression in that test.",
+          "description": "The number of failed and errored tests in the whole run of the selected repository - not only the selected tests. If the run had failures when a selected test spiked, the cause can be the run, not the test.",
           "id": 7,
           "links": [],
           "title": "Whole-run health: failed & errored tests",
@@ -1660,7 +1660,7 @@
               "transformations": []
             }
           },
-          "description": "Total test time of the whole run for the selected repository. If this moved together with the selected tests, the whole run got slower (runner change, infrastructure) rather than the individual tests.",
+          "description": "The total test time of the whole run for the selected repository. If this moved together with a selected test, the run became slower as a whole - examine the runner or the infrastructure.",
           "id": 8,
           "links": [],
           "title": "Whole-run total test time",

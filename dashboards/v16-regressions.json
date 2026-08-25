@@ -27,7 +27,7 @@
       }
     ],
     "cursorSync": "Off",
-    "description": "Fleet-wide regression triage: how many tests are slower than they used to be, anywhere, and whether every repository is still reporting. No repository filter on purpose - for one repo's health use the Repo Health dashboard, and to debug a single test use Test Details (both linked in the top bar and from every test name).",
+    "description": "Regression triage for all repositories. The board answers two questions: which tests are regressed now, and does every repository still report? This board has no repository filter. To examine one repository, open Repo Health. To examine one test, click its name - Test Details opens.",
     "editable": true,
     "elements": {
       "panel-1": {
@@ -66,7 +66,7 @@
               "transformations": []
             }
           },
-          "description": "How many tests across ALL repositories are slower right now than they used to be. A test counts only if all three are true: more than the chosen threshold slower than its usual duration, at least 1 second of real slowdown, and 10+ past measurements. 0 means everything is running at its normal speed.",
+          "description": "The number of regressed tests in all repositories. A test is regressed when all three are true: it is more than the slowdown threshold slower than its typical (baseline) duration, the slowdown is more than 1 second, and the baseline window has 10 or more runs. A healthy value is 0.",
           "id": 1,
           "links": [],
           "title": "Regressed tests now",
@@ -152,7 +152,7 @@
               "transformations": []
             }
           },
-          "description": "How long ago each repository last reported test results. If one grows beyond a day or two, that repo's CI or metrics reporting is probably broken - fix it before trusting its rows elsewhere on this board.",
+          "description": "The time since each repository last reported test results. A healthy value is below the repository's CI interval, usually one day. A larger value means the CI job or the metrics upload is broken. Repair it before you trust that repository's numbers on this board.",
           "id": 2,
           "links": [],
           "title": "Hours since last run (per repo)",
@@ -644,7 +644,7 @@
               ]
             }
           },
-          "description": "The 200 tests that changed most against their own history (before a baseline exists: the 200 slowest), one row per test per server version. The cap keeps the page fast at any fleet size - the full inventory is browsable per test via the timeline drill-down, and everything that regressed is always in the table below regardless of rank.\n\n- typical (recent): typical duration over the last few days (middle value - one unlucky run does not skew it)\n- last run: most recent run, for reference\n- typical (baseline): what was typical before that\n- change (s) / change (%): how much slower (+) or faster (-) vs baseline\n- runs counted: how many past measurements back the baseline - be skeptical of small ones\n\nREGRESSION requires all three: more than the threshold slower, at least +1 second, and 10+ past measurements.",
+          "description": "The 200 tests with the largest change against their own baseline, one row per combination of test name and server version. Before a baseline exists, the table shows the 200 slowest tests instead. A test outside the top 200 can still be regressed; the \"Regressions right now\" table below shows every regressed test. Click a test name to open it in Test Details.\n\nColumns:\n- trend: red up = slower, green down = faster\n- typical (recent): the median duration over the recent window\n- typical (baseline): the median duration over the baseline window\n- last run: the duration of the most recent run\n- change (s) / change (%): typical (recent) minus typical (baseline)\n- runs counted: the number of runs in the baseline window; be careful with small values\n- verdict: REGRESSION when the test matches the regression rule (see \"Regressed tests now\")",
           "id": 3,
           "links": [],
           "title": "Top 200 tests that changed the most ($branch)",
@@ -1057,7 +1057,7 @@
               ]
             }
           },
-          "description": "Only the tests that currently pass the regression rule - more than the threshold slower than their own history, at least +1 second, with 10+ past measurements. The value shows how many times slower the test is now compared with its usual duration (2.0 = twice as slow). An empty table means no regressions anywhere.",
+          "description": "Every test that matches the regression rule now. A test is regressed when all three are true: it is more than the slowdown threshold slower than its typical (baseline) duration, the slowdown is more than 1 second, and the baseline window has 10 or more runs. The value shows how many times slower the test is (2.0 = twice as slow). A healthy table is empty.",
           "id": 4,
           "links": [],
           "title": "Regressions right now - all repositories",
@@ -1205,7 +1205,7 @@
               "transformations": []
             }
           },
-          "description": "How the regressed tests split across repositories. All bars green at 0 is the healthy state; a red bar tells you where to look in the table below.",
+          "description": "The number of regressed tests in each repository. A healthy board shows every bar green at 0. A red bar shows which repository to examine in the table below.",
           "id": 5,
           "links": [],
           "title": "Regressed tests per repo",
@@ -1301,7 +1301,7 @@
               "transformations": []
             }
           },
-          "description": "How many tests were regressed on each day, per repository. Falling toward zero means fixes land; a step up marks the day a slowdown arrived. Repositories appear only on days they had regressed tests. This is the heaviest panel on the board - it recomputes the regression rule for every day shown.",
+          "description": "The number of regressed tests on each day, for each repository. A healthy line falls to zero as fixes arrive. A step up shows the day a slowdown started. A repository appears only on days when it had regressed tests.",
           "id": 6,
           "links": [],
           "title": "Regressed tests over time",
@@ -1416,10 +1416,10 @@
               "transformations": []
             }
           },
-          "description": "Distribution of the change of every test that usually takes 0.1 s or more. Healthy: one narrow peak at 0%. A tail to the right is a group of tests that got slower; the whole peak shifted right means the runs themselves got slower (runner or infrastructure), not individual tests.",
+          "description": "How much each test changed between the baseline window and the recent window. Only tests with a typical duration of 0.1 seconds or more are included. A healthy shape is one narrow peak at 0%. A tail to the right is a group of tests that became slower. A peak that moved to the right means the runs became slower as a whole - examine the runner or the infrastructure, not single tests.",
           "id": 7,
           "links": [],
-          "title": "How much tests changed (recent vs baseline)",
+          "title": "How much each test changed (recent vs baseline)",
           "vizConfig": {
             "group": "histogram",
             "kind": "VizConfig",
@@ -1504,7 +1504,7 @@
               "transformations": []
             }
           },
-          "description": "The 20 tests that slowed down the most across all repositories - typical (recent) minus typical (baseline). If a test runs against several server versions, the bar shows its slowest one. Click a bar to open the test in Test Details.",
+          "description": "The 20 tests that became slower by the largest amount, in all repositories: typical (recent) minus typical (baseline). When a test runs against more than one server version, the bar shows the slowest version. Click a bar to open the test in Test Details.",
           "id": 8,
           "links": [],
           "title": "Top 20 biggest slowdowns (recent vs baseline)",

@@ -27,7 +27,7 @@
       }
     ],
     "cursorSync": "Off",
-    "description": "Fleet-level view: how test suites are trending per repository and server version, which tests appeared or vanished, and whether our metrics storage stays healthy. For per-test inspection use the Repo Health dashboard.",
+    "description": "Trends for all repositories: total test time, test counts, new and disappeared tests, and checks that test names stay stable. To examine one repository, open Repo Health. To examine one test, open Test Details.",
     "editable": true,
     "elements": {
       "panel-1": {
@@ -66,7 +66,7 @@
               "transformations": []
             }
           },
-          "description": "How many repositories sent test results recently.",
+          "description": "The number of repositories that reported test results in the recent window.",
           "id": 1,
           "links": [],
           "title": "Repos reporting",
@@ -148,7 +148,7 @@
               "transformations": []
             }
           },
-          "description": "Distinct test names that reported in the selected recent window. A test that runs against several server versions is counted once here — the \"Tests × server versions\" panel counts every combination separately.",
+          "description": "The number of distinct test names that reported in the recent window. A test that runs against several server versions counts once here. The \"Tests × server versions\" panel counts each combination.",
           "id": 2,
           "links": [],
           "title": "Unique tests",
@@ -230,7 +230,7 @@
               "transformations": []
             }
           },
-          "description": "Every combination of test name and server version seen in the last 30 days; each combination is tracked (and billed) separately. Healthy: roughly Unique tests × number of server versions. If this number grows while Unique tests stays flat, old names keep being replaced by new ones — see the \"Are test names stable?\" panels below.",
+          "description": "The number of combinations of test name and server version seen in the last 30 days. Each combination is one metric series and is billed as one. A healthy value is near: unique tests × number of server versions. If this number grows while \"Unique tests\" stays flat, new names replace old names - check the \"Are test names stable?\" panels below.",
           "id": 10,
           "links": [],
           "title": "Tests × server versions (30 days)",
@@ -314,7 +314,7 @@
               "transformations": []
             }
           },
-          "description": "Total time a full test run takes, per repository and server version. A rising line means CI is getting slower overall, even if no single test trips the regression alarm.",
+          "description": "The total duration of a full run, for each repository and server version, over time. A healthy line is flat. A line that rises means CI becomes slower as a whole, even when no single test is regressed.",
           "id": 6,
           "links": [],
           "title": "Total test time per repo",
@@ -429,7 +429,7 @@
               "transformations": []
             }
           },
-          "description": "Number of tests per repository and server version. Jumps reveal suite growth; sustained climbing without new tests means unstable test names minting duplicate entries.",
+          "description": "The number of tests for each repository and server version, over time. A step up matches new tests. A line that climbs without new tests means unstable test names - each run then creates new names. Check the \"Are test names stable?\" panels below.",
           "id": 7,
           "links": [],
           "title": "Test count per repo",
@@ -567,7 +567,7 @@
               ]
             }
           },
-          "description": "Tests that appeared recently and have no earlier history (capped at 200). Expect a wave when a repo or server version is first onboarded.",
+          "description": "Tests that appeared in the recent window and have no earlier history. The table shows at most 200 rows. Many new tests at once is normal when a repository or a server version starts to report.",
           "id": 8,
           "links": [],
           "title": "New tests (first seen in the last $recent)",
@@ -672,7 +672,7 @@
               "transformations": []
             }
           },
-          "description": "Tests that had history but no recent runs - deleted, renamed, or a server version dropped from the CI matrix.",
+          "description": "Tests that have history but no runs in the recent window. Causes: the test was deleted, the test was renamed, or a server version left the CI matrix.",
           "id": 9,
           "links": [],
           "title": "Disappeared tests (per repo)",
@@ -758,7 +758,7 @@
               "transformations": []
             }
           },
-          "description": "Metric series that reported within the last 20 minutes — what Grafana Cloud counts as active for billing. Near zero between CI runs is expected and keeps the bill low.",
+          "description": "The number of metric series that reported in the last 20 minutes. Grafana Cloud bills these as active series. A value near zero between runs is healthy.",
           "id": 11,
           "links": [],
           "title": "Metric series billed now",
@@ -840,7 +840,7 @@
               "transformations": []
             }
           },
-          "description": "The slowest tests across the fleet - typical (median) duration over the recent window; when a test runs against several server versions, the bar shows its slowest one. Click a bar to open the test in Test Details.",
+          "description": "The 20 tests with the largest typical (recent) duration, in all repositories. When a test runs against more than one server version, the bar shows the slowest version. Click a bar to open the test in Test Details.",
           "id": 3,
           "links": [],
           "title": "Top 20 slowest tests",
@@ -926,7 +926,7 @@
               "transformations": []
             }
           },
-          "description": "Tests that gained the most time compared with their own history - biggest absolute slowdowns across the fleet. Click a bar to open the test in Test Details.",
+          "description": "The 20 tests that became slower by the largest amount, in all repositories: typical (recent) minus typical (baseline). When a test runs against more than one server version, the bar shows the slowest version. Click a bar to open the test in Test Details.",
           "id": 4,
           "links": [],
           "title": "Top 20 biggest slowdowns (recent vs baseline)",
@@ -1012,7 +1012,7 @@
               "transformations": []
             }
           },
-          "description": "Tests that got faster compared with their own history - the other side of the slowdowns panel. The value is time saved per run. Click a bar to open the test in Test Details.",
+          "description": "The 20 tests that became faster by the largest amount: typical (baseline) minus typical (recent). The value is the time saved in each run. Click a bar to open the test in Test Details.",
           "id": 12,
           "links": [],
           "title": "Top 20 biggest speed-ups (recent vs baseline)",
@@ -1100,7 +1100,7 @@
               "transformations": []
             }
           },
-          "description": "How many tests were flagged as regressed at each point in time, per repository (same rule as the regression table). Every reporting repository shows a line anchored at zero; a spike means something landed in that repo, and it decays as the new level becomes the norm.",
+          "description": "The number of regressed tests at each point in time, for each repository. Every reporting repository shows a line that starts at zero. A spike means a slowdown arrived in that repository. The line falls again when the new duration becomes the baseline, after about two weeks.",
           "id": 13,
           "links": [],
           "title": "Regressed tests over time",
@@ -1263,7 +1263,7 @@
               "transformations": []
             }
           },
-          "description": "The distribution of all test durations over time: the typical test (p50), the slow tail (p95), and the single slowest. A rising p95 with a flat p50 means the slow tests are getting slower even though most tests are fine.",
+          "description": "The distribution of all test durations over time: the median test (p50), the slow tail (p95), and the slowest test. A healthy p95 follows a flat p50. A p95 that rises while the p50 stays flat means the slow tests become slower.",
           "id": 14,
           "links": [],
           "title": "Test duration spread",
@@ -1402,7 +1402,7 @@
               "transformations": []
             }
           },
-          "description": "Test health beyond duration: how many tests failed (incl. errors) or were skipped in each run, per repository. A creeping skipped count usually means tests being quietly disabled instead of fixed.",
+          "description": "The number of failed tests (errors included) and skipped tests in each run, for each repository. A skipped count that rises over time usually means tests are disabled instead of repaired.",
           "id": 15,
           "links": [],
           "title": "Failed & skipped tests over time",
@@ -1517,7 +1517,7 @@
               "transformations": []
             }
           },
-          "description": "How many test runs each repository uploaded per day (matrix jobs count separately). If a repository's cadence drops, its baselines age and the regression rule loses confidence - check this when a repo's numbers look stale.",
+          "description": "The number of runs that each repository uploaded on each day. Matrix jobs count separately. If a repository uploads less often, its baseline ages and the regression rule loses accuracy. Check this panel when a repository's numbers look old.",
           "id": 16,
           "links": [],
           "title": "CI uploads per day",
@@ -1632,7 +1632,7 @@
               "transformations": []
             }
           },
-          "description": "Percent change of a repository's total CI test time compared with three weeks earlier, one line per server version. Hovering around 0% is healthy. A steady climb means the whole suite is getting slower little by little — the kind of creep no single-test alarm catches. Empty until three weeks of history exists.",
+          "description": "The change of a repository's total test time compared with three weeks earlier, one line per server version. A healthy line stays near 0%. A line that climbs steadily means the full suite becomes slower in small steps. Empty until three weeks of history exist.",
           "id": 17,
           "links": [],
           "title": "Total test time: change vs 3 weeks ago",
@@ -1733,7 +1733,7 @@
                 "overrides": []
               },
               "options": {
-                "content": "### Are test names stable?\n\nA test whose name embeds a run-varying value (a timestamp, a random id, a port) looks brand-new on every run: history never accumulates, baselines never mature, and every run adds paid metric series. The action warns about recognizable patterns when results are submitted; these panels watch for everything else by observing the names themselves.",
+                "content": "### Are test names stable?\n\nA test name that contains a value that changes on each run (a time, a random id, a port) counts as a new test on every run. Its history never grows, its baseline never fills, and every run adds paid metric series. The action warns about known patterns at upload time. The panels below check the names themselves and find the rest.",
                 "mode": "markdown"
               }
             },
@@ -1779,7 +1779,7 @@
               "transformations": []
             }
           },
-          "description": "How many test names appeared for the first time, per repository. Spikes right after merging new tests are normal. A line that never returns to zero means test names contain values that change on every run (timestamps, random ids) — each run then looks like a set of new tests. A repository's first days here show its whole test suite as new, which is accurate.",
+          "description": "The number of test names that appeared for the first time, for each repository, per day. Spikes after new tests merge are normal. A line that does not return to zero means test names contain values that change on each run (times, random ids). A repository's first days show its full suite as new; that is correct.",
           "id": 19,
           "links": [],
           "title": "New test names per day",
@@ -1894,7 +1894,7 @@
               "transformations": []
             }
           },
-          "description": "Test names with exactly one recorded run in the last 7 days, ignoring tests added within the last day (a genuinely new test starts with one run). Healthy value: 0. A persistent count means names change between runs, so each name is seen exactly once and then never again.",
+          "description": "Test names with exactly one recorded run in the last 7 days. Tests added in the last day are ignored, because a new test starts with one run. A healthy value is 0. A constant count means names change between runs: each name appears once and never again.",
           "id": 20,
           "links": [],
           "title": "Test names that never repeat",
@@ -2007,7 +2007,7 @@
               "transformations": []
             }
           },
-          "description": "Test + server version combinations seen in the last 30 days but not in the last 3 days, worst repository shown (ignores the filters above). 0 means every name from the past month is still reporting — names are stable. A rising number means names keep being replaced: either tests were renamed or removed (fine, ages out within 30 days) or names change on every run (fix the test names).",
+          "description": "The number of combinations of test name and server version seen in the last 30 days but not in the last 3 days. The worst repository is shown; the filters above do not apply. A healthy value is 0: every name from the last month still reports. Renamed or removed tests leave this count within 30 days. Names that change on each run must be repaired.",
           "id": 21,
           "links": [],
           "title": "Test name stability check",
@@ -2093,7 +2093,7 @@
               "transformations": []
             }
           },
-          "description": "How long ago each repository last reported test results. If one grows beyond a day or two, that repo's CI or metrics reporting is probably broken - fix it before trusting its rows elsewhere on this board.",
+          "description": "The time since each repository last reported test results. A healthy value is below the repository's CI interval, usually one day. A larger value means the CI job or the metrics upload is broken. Repair it before you trust that repository's numbers on this board.",
           "id": 22,
           "links": [],
           "title": "Hours since last run (per repo)",
