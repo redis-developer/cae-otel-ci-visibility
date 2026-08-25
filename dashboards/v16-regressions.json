@@ -27,7 +27,7 @@
       }
     ],
     "cursorSync": "Off",
-    "description": "Fleet-wide regression triage: how many tests are slower than they used to be, anywhere, and whether every repository is still reporting. No repository filter on purpose - for one repo's health and per-test drilldown use the Repo Health dashboard (linked in the top bar and from every test name).",
+    "description": "Fleet-wide regression triage: how many tests are slower than they used to be, anywhere, and whether every repository is still reporting. No repository filter on purpose - for one repo's health use the Repo Health dashboard, and to debug a single test use Test Details (both linked in the top bar and from every test name).",
     "editable": true,
     "elements": {
       "panel-1": {
@@ -409,6 +409,32 @@
                   "kind": "Transformation",
                   "spec": {
                     "options": {
+                      "alias": "trend",
+                      "binary": {
+                        "left": {
+                          "matcher": {
+                            "id": "byName",
+                            "options": "abs change"
+                          }
+                        },
+                        "operator": "*",
+                        "right": {
+                          "fixed": "1"
+                        }
+                      },
+                      "mode": "binary",
+                      "reduce": {
+                        "reducer": "sum"
+                      },
+                      "replaceFields": false
+                    }
+                  }
+                },
+                {
+                  "group": "calculateField",
+                  "kind": "Transformation",
+                  "spec": {
+                    "options": {
                       "alias": "median x ratio",
                       "binary": {
                         "left": {
@@ -585,17 +611,18 @@
                       },
                       "includeByName": {},
                       "indexByName": {
-                        "test_id": 0,
-                        "is regression": 1,
-                        "server_version": 2,
-                        "Value #current": 3,
-                        "Value #last_run": 4,
-                        "Value #median": 5,
-                        "abs change": 6,
-                        "rel change": 7,
+                        "trend": 0,
+                        "test_id": 1,
+                        "is regression": 2,
+                        "rel change": 3,
+                        "abs change": 4,
+                        "Value #current": 5,
+                        "Value #median": 6,
+                        "Value #last_run": 7,
                         "Value #samples": 8,
-                        "vcs_repository_name": 9,
-                        "Time": 10
+                        "server_version": 9,
+                        "vcs_repository_name": 10,
+                        "Time": 11
                       },
                       "renameByName": {
                         "Time": "",
@@ -608,7 +635,8 @@
                         "server_version": "server version",
                         "abs change": "change (s)",
                         "rel change": "change (%)",
-                        "is regression": "verdict"
+                        "is regression": "verdict",
+                        "trend": "trend"
                       }
                     }
                   }
@@ -711,8 +739,8 @@
                         "value": [
                           {
                             "targetBlank": true,
-                            "title": "Open in Repo Health drilldown",
-                            "url": "/d/bos8jzw/repo-health-test-drilldown-v16?var-test_id=${__value.raw}&var-repository=${__data.fields.repository}&${server_version:queryparam}&${branch:queryparam}"
+                            "title": "Open in Test Details",
+                            "url": "/d/cae-test-details-v16?var-test_id=${__value.raw}&var-repository=${__data.fields.repository}&${server_version:queryparam}&${branch:queryparam}"
                           }
                         ]
                       }
@@ -758,6 +786,28 @@
                             }
                           }
                         ]
+                      },
+                      {
+                        "id": "thresholds",
+                        "value": {
+                          "mode": "absolute",
+                          "steps": [
+                            {
+                              "color": "green",
+                              "value": 0
+                            },
+                            {
+                              "color": "red",
+                              "value": 1e-9
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-text"
+                        }
                       }
                     ]
                   },
@@ -797,6 +847,28 @@
                             }
                           }
                         ]
+                      },
+                      {
+                        "id": "thresholds",
+                        "value": {
+                          "mode": "absolute",
+                          "steps": [
+                            {
+                              "color": "green",
+                              "value": 0
+                            },
+                            {
+                              "color": "red",
+                              "value": 1e-9
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-text"
+                        }
                       }
                     ]
                   },
@@ -820,6 +892,80 @@
                             }
                           }
                         ]
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "trend"
+                    },
+                    "properties": [
+                      {
+                        "id": "mappings",
+                        "value": [
+                          {
+                            "type": "range",
+                            "options": {
+                              "from": 1e-9,
+                              "to": null,
+                              "result": {
+                                "text": "▲",
+                                "color": "red",
+                                "index": 0
+                              }
+                            }
+                          },
+                          {
+                            "type": "range",
+                            "options": {
+                              "from": null,
+                              "to": -1e-9,
+                              "result": {
+                                "text": "▼",
+                                "color": "green",
+                                "index": 1
+                              }
+                            }
+                          },
+                          {
+                            "type": "range",
+                            "options": {
+                              "from": -1e-9,
+                              "to": 1e-9,
+                              "result": {
+                                "text": "•",
+                                "color": "text",
+                                "index": 2
+                              }
+                            }
+                          },
+                          {
+                            "type": "special",
+                            "options": {
+                              "match": "null+nan",
+                              "result": {
+                                "text": "•",
+                                "color": "text",
+                                "index": 3
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-text"
+                        }
+                      },
+                      {
+                        "id": "custom.align",
+                        "value": "center"
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 70
                       }
                     ]
                   }
@@ -959,8 +1105,8 @@
                         "value": [
                           {
                             "targetBlank": true,
-                            "title": "Open in Repo Health drilldown",
-                            "url": "/d/bos8jzw/repo-health-test-drilldown-v16?var-test_id=${__value.raw}&var-repository=${__data.fields.repository}&${server_version:queryparam}&${branch:queryparam}"
+                            "title": "Open in Test Details",
+                            "url": "/d/cae-test-details-v16?var-test_id=${__value.raw}&var-repository=${__data.fields.repository}&${server_version:queryparam}&${branch:queryparam}"
                           }
                         ]
                       }
@@ -1022,6 +1168,391 @@
             "version": "13.2.0-29854286369"
           }
         }
+      },
+      "panel-5": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "${datasource}"
+                      },
+                      "group": "prometheus",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "editorMode": "code",
+                        "exemplar": false,
+                        "expr": "count by (vcs_repository_name) (\n(\n    max by (test_id, vcs_repository_name, server_version) (\n      quantile_over_time(0.5, cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n    )\n  /\n    clamp_min(\n      max by (test_id, vcs_repository_name, server_version) (\n        quantile_over_time(0.5, cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n      ),\n      0.05\n    )\n) > $ratio\nand\n(\n    max by (test_id, vcs_repository_name, server_version) (\n      quantile_over_time(0.5, cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n    )\n  -\n    max by (test_id, vcs_repository_name, server_version) (\n      quantile_over_time(0.5, cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n    )\n) > 1\nand\n  max by (test_id, vcs_repository_name, server_version) (\n    count_over_time(cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n  ) >= 10\n)\nor\n(\n  sum by (vcs_repository_name) (\n    last_over_time(cae_v16_test_run_duration_seconds{vcs_repository_ref_name=~\"$branch\"}[$baseline])\n  ) * 0\n)",
+                        "format": "time_series",
+                        "instant": true,
+                        "range": false,
+                        "legendFormat": "{{vcs_repository_name}}"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "regressed_per_repo"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "How the regressed tests split across repositories. All bars green at 0 is the healthy state; a red bar tells you where to look in the table below.",
+          "id": 5,
+          "links": [],
+          "title": "Regressed tests per repo",
+          "vizConfig": {
+            "group": "bargauge",
+            "kind": "VizConfig",
+            "version": "13.2.0-29854286369",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "decimals": 0,
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 1
+                      }
+                    ]
+                  },
+                  "unit": "short"
+                },
+                "overrides": []
+              },
+              "options": {
+                "displayMode": "basic",
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
+                },
+                "maxVizHeight": 300,
+                "minVizHeight": 16,
+                "minVizWidth": 8,
+                "namePlacement": "auto",
+                "orientation": "horizontal",
+                "reduceOptions": {
+                  "calcs": ["lastNotNull"],
+                  "fields": "",
+                  "values": true
+                },
+                "showUnfilled": true,
+                "sizing": "auto",
+                "valueMode": "color"
+              }
+            }
+          }
+        }
+      },
+      "panel-6": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "${datasource}"
+                      },
+                      "group": "prometheus",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "editorMode": "code",
+                        "exemplar": false,
+                        "expr": "count by (vcs_repository_name) (\n(\n    max by (test_id, vcs_repository_name, server_version) (\n      quantile_over_time(0.5, cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n    )\n  /\n    clamp_min(\n      max by (test_id, vcs_repository_name, server_version) (\n        quantile_over_time(0.5, cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n      ),\n      0.05\n    )\n) > $ratio\nand\n(\n    max by (test_id, vcs_repository_name, server_version) (\n      quantile_over_time(0.5, cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n    )\n  -\n    max by (test_id, vcs_repository_name, server_version) (\n      quantile_over_time(0.5, cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n    )\n) > 1\nand\n  max by (test_id, vcs_repository_name, server_version) (\n    count_over_time(cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n  ) >= 10\n)",
+                        "format": "time_series",
+                        "instant": false,
+                        "range": true,
+                        "legendFormat": "{{vcs_repository_name}}",
+                        "interval": "1d"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "regressed_over_time"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "How many tests were regressed on each day, per repository. Falling toward zero means fixes land; a step up marks the day a slowdown arrived. Repositories appear only on days they had regressed tests. This is the heaviest panel on the board - it recomputes the regression rule for every day shown.",
+          "id": 6,
+          "links": [],
+          "title": "Regressed tests over time",
+          "vizConfig": {
+            "group": "timeseries",
+            "kind": "VizConfig",
+            "version": "13.2.0-29854286369",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "bars",
+                    "fillOpacity": 60,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "normal"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "decimals": 0,
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      }
+                    ]
+                  },
+                  "unit": "short"
+                },
+                "overrides": []
+              },
+              "options": {
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              }
+            }
+          }
+        }
+      },
+      "panel-7": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "${datasource}"
+                      },
+                      "group": "prometheus",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "editorMode": "code",
+                        "exemplar": false,
+                        "expr": "(\n    max by (test_id, vcs_repository_name, server_version) (\n      quantile_over_time(0.5, cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent])\n    )\n  /\n    max by (test_id, vcs_repository_name, server_version) (\n      quantile_over_time(0.5, cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n    )\n  - 1\n)\nand\nmax by (test_id, vcs_repository_name, server_version) (\n  quantile_over_time(0.5, cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent)\n) > 0.1",
+                        "format": "time_series",
+                        "instant": true,
+                        "range": false,
+                        "legendFormat": "change"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "change_distribution"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Distribution of the change of every test that usually takes 0.1 s or more. Healthy: one narrow peak at 0%. A tail to the right is a group of tests that got slower; the whole peak shifted right means the runs themselves got slower (runner or infrastructure), not individual tests.",
+          "id": 7,
+          "links": [],
+          "title": "How much tests changed (recent vs baseline)",
+          "vizConfig": {
+            "group": "histogram",
+            "kind": "VizConfig",
+            "version": "13.2.0-29854286369",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "fillOpacity": 80,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineWidth": 1
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      }
+                    ]
+                  },
+                  "unit": "percentunit"
+                },
+                "overrides": []
+              },
+              "options": {
+                "bucketOffset": 0,
+                "combine": true,
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "panel-8": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "refId": "A",
+                    "query": {
+                      "datasource": {
+                        "name": "${datasource}"
+                      },
+                      "group": "prometheus",
+                      "kind": "DataQuery",
+                      "version": "v0",
+                      "spec": {
+                        "editorMode": "code",
+                        "exemplar": false,
+                        "expr": "topk(20,\n  max by (test_id, vcs_repository_name) (\n      max by (test_id, vcs_repository_name, server_version) (\n        quantile_over_time(0.5,\n          cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$recent]\n        )\n      )\n    -\n      max by (test_id, vcs_repository_name, server_version) (\n        quantile_over_time(0.5,\n          cae_v16_test_duration_seconds{server_version=~\"$server_version\", vcs_repository_ref_name=~\"$branch\"}[$baseline] offset $recent\n        )\n      )\n  )\n)",
+                        "format": "time_series",
+                        "instant": true,
+                        "legendFormat": "{{vcs_repository_name}}  ·  {{test_id}}",
+                        "range": false
+                      }
+                    }
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "The 20 tests that slowed down the most across all repositories - typical (recent) minus typical (baseline). If a test runs against several server versions, the bar shows its slowest one. Click a bar to open the test in Test Details.",
+          "id": 8,
+          "links": [],
+          "title": "Top 20 biggest slowdowns (recent vs baseline)",
+          "vizConfig": {
+            "group": "bargauge",
+            "kind": "VizConfig",
+            "version": "13.2.0-29854286369",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "links": [
+                    {
+                      "title": "Open in Test Details",
+                      "url": "/d/cae-test-details-v16?${__url_time_range}&var-repository=${__field.labels.vcs_repository_name}&${server_version:queryparam}&${branch:queryparam}&var-test_id=${__field.labels.test_id}"
+                    }
+                  ],
+                  "unit": "s",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "blue",
+                        "value": 0
+                      }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "displayMode": "basic",
+                "orientation": "horizontal",
+                "namePlacement": "auto",
+                "maxVizHeight": 300,
+                "minVizHeight": 16,
+                "minVizWidth": 8,
+                "showUnfilled": true,
+                "sizing": "auto",
+                "valueMode": "color",
+                "reduceOptions": {
+                  "calcs": ["lastNotNull"],
+                  "fields": "",
+                  "values": false
+                }
+              }
+            }
+          }
+        }
       }
     },
     "layout": {
@@ -1035,10 +1566,23 @@
                 "kind": "ElementReference",
                 "name": "panel-1"
               },
-              "height": 4,
-              "width": 6,
               "x": 0,
-              "y": 0
+              "y": 0,
+              "width": 6,
+              "height": 4
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-5"
+              },
+              "x": 6,
+              "y": 0,
+              "width": 9,
+              "height": 4
             }
           },
           {
@@ -1048,10 +1592,23 @@
                 "kind": "ElementReference",
                 "name": "panel-2"
               },
-              "height": 4,
-              "width": 18,
-              "x": 6,
-              "y": 0
+              "x": 15,
+              "y": 0,
+              "width": 9,
+              "height": 4
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-6"
+              },
+              "x": 0,
+              "y": 4,
+              "width": 24,
+              "height": 8
             }
           },
           {
@@ -1061,10 +1618,36 @@
                 "kind": "ElementReference",
                 "name": "panel-3"
               },
-              "height": 16,
-              "width": 24,
               "x": 0,
-              "y": 4
+              "y": 12,
+              "width": 24,
+              "height": 16
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-7"
+              },
+              "x": 0,
+              "y": 28,
+              "width": 12,
+              "height": 9
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-8"
+              },
+              "x": 12,
+              "y": 28,
+              "width": 12,
+              "height": 9
             }
           },
           {
@@ -1074,10 +1657,10 @@
                 "kind": "ElementReference",
                 "name": "panel-4"
               },
-              "height": 10,
-              "width": 24,
               "x": 0,
-              "y": 20
+              "y": 37,
+              "width": 24,
+              "height": 10
             }
           }
         ]
@@ -1097,10 +1680,22 @@
         "tags": []
       },
       {
-        "title": "Repo Health drilldown",
+        "title": "Repo Health",
         "type": "link",
         "icon": "dashboard",
         "url": "/d/bos8jzw",
+        "tooltip": "",
+        "asDropdown": false,
+        "targetBlank": false,
+        "includeVars": false,
+        "keepTime": true,
+        "tags": []
+      },
+      {
+        "title": "Test Details",
+        "type": "link",
+        "icon": "dashboard",
+        "url": "/d/cae-test-details-v16",
         "tooltip": "",
         "asDropdown": false,
         "targetBlank": false,

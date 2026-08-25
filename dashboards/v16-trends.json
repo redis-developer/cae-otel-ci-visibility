@@ -840,7 +840,7 @@
               "transformations": []
             }
           },
-          "description": "The slowest tests across the fleet - typical (median) duration over the recent window; when a test runs against several server versions, the bar shows its slowest one. Click a bar to open the test in the Repo Health drilldown.",
+          "description": "The slowest tests across the fleet - typical (median) duration over the recent window; when a test runs against several server versions, the bar shows its slowest one. Click a bar to open the test in Test Details.",
           "id": 3,
           "links": [],
           "title": "Top 20 slowest tests",
@@ -853,8 +853,8 @@
                 "defaults": {
                   "links": [
                     {
-                      "title": "Open in Repo Health drilldown",
-                      "url": "/d/bos8jzw?${__url_time_range}&${repository:queryparam}&${server_version:queryparam}&${branch:queryparam}&var-test_id=${__field.labels.test_id}"
+                      "title": "Open in Test Details",
+                      "url": "/d/cae-test-details-v16?${__url_time_range}&${repository:queryparam}&${server_version:queryparam}&${branch:queryparam}&var-test_id=${__field.labels.test_id}"
                     }
                   ],
                   "unit": "s",
@@ -926,7 +926,7 @@
               "transformations": []
             }
           },
-          "description": "Tests that gained the most time compared with their own history - biggest absolute slowdowns across the fleet. Click a bar to open the test in the Repo Health drilldown.",
+          "description": "Tests that gained the most time compared with their own history - biggest absolute slowdowns across the fleet. Click a bar to open the test in Test Details.",
           "id": 4,
           "links": [],
           "title": "Top 20 biggest slowdowns (recent vs baseline)",
@@ -939,8 +939,8 @@
                 "defaults": {
                   "links": [
                     {
-                      "title": "Open in Repo Health drilldown",
-                      "url": "/d/bos8jzw?${__url_time_range}&${repository:queryparam}&${server_version:queryparam}&${branch:queryparam}&var-test_id=${__field.labels.test_id}"
+                      "title": "Open in Test Details",
+                      "url": "/d/cae-test-details-v16?${__url_time_range}&${repository:queryparam}&${server_version:queryparam}&${branch:queryparam}&var-test_id=${__field.labels.test_id}"
                     }
                   ],
                   "unit": "s",
@@ -1012,7 +1012,7 @@
               "transformations": []
             }
           },
-          "description": "Tests that got faster compared with their own history - the other side of the slowdowns panel. The value is time saved per run. Click a bar to open the test in the Repo Health drilldown.",
+          "description": "Tests that got faster compared with their own history - the other side of the slowdowns panel. The value is time saved per run. Click a bar to open the test in Test Details.",
           "id": 12,
           "links": [],
           "title": "Top 20 biggest speed-ups (recent vs baseline)",
@@ -1025,8 +1025,8 @@
                 "defaults": {
                   "links": [
                     {
-                      "title": "Open in Repo Health drilldown",
-                      "url": "/d/bos8jzw?${__url_time_range}&${repository:queryparam}&${server_version:queryparam}&${branch:queryparam}&var-test_id=${__field.labels.test_id}"
+                      "title": "Open in Test Details",
+                      "url": "/d/cae-test-details-v16?${__url_time_range}&${repository:queryparam}&${server_version:queryparam}&${branch:queryparam}&var-test_id=${__field.labels.test_id}"
                     }
                   ],
                   "unit": "s",
@@ -2445,10 +2445,22 @@
         "tags": []
       },
       {
-        "title": "Repo Health drilldown",
+        "title": "Repo Health",
         "type": "link",
         "icon": "dashboard",
         "url": "/d/bos8jzw",
+        "tooltip": "",
+        "asDropdown": false,
+        "targetBlank": false,
+        "includeVars": false,
+        "keepTime": true,
+        "tags": []
+      },
+      {
+        "title": "Test Details",
+        "type": "link",
+        "icon": "dashboard",
+        "url": "/d/cae-test-details-v16",
         "tooltip": "",
         "asDropdown": false,
         "targetBlank": false,

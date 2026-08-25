@@ -3,11 +3,17 @@
 Grafana schema-V2 dashboard JSONs for the `cae_v16_*` metrics this action emits
 (see the repo README's Dashboard Integration section for the metric contract).
 
-| File                   | Title                              | Live uid  | Job                                                    |
-| ---------------------- | ---------------------------------- | --------- | ------------------------------------------------------ |
-| `v16-regressions.json` | Test Regressions (v16)             | `botthhp` | Alarm triage: what's flagged right now, fleet-wide     |
-| `v16-repo-health.json` | Repo Health - Test Drilldown (v16) | `bos8jzw` | Developer view: one repo's slowest/movers + timeline   |
-| `v16-trends.json`      | Test Trends & Timelines (v16)      | `bocj686` | Fleet view: offenders, per-track trends, catalog stats |
+| File                    | Title                         | Live uid               | Job                                                      |
+| ----------------------- | ----------------------------- | ---------------------- | -------------------------------------------------------- |
+| `v16-regressions.json`  | Test Regressions (v16)        | `botthhp`              | Alarm triage: what's flagged right now, fleet-wide       |
+| `v16-repo-health.json`  | Repo Health (v16)             | `bos8jzw`              | Developer view: one repo's slowest/movers, bird's-eye    |
+| `v16-trends.json`       | Test Trends & Timelines (v16) | `bocj686`              | Fleet view: offenders, per-track trends, catalog stats   |
+| `v16-test-details.json` | Test Details (v16)            | `cae-test-details-v16` | Debug view: timeline + health context for selected tests |
+
+Test-name clicks on the other three boards deep-link into Test Details with
+`var-test_id` preset; its uid is therefore hardcoded in all three JSONs. The uid
+was chosen in `metadata.name` before first import — if Grafana ever mints a
+different uid instead of honoring it, repoint the links and this table.
 
 ## Import rules (hard-won — do not deviate)
 
