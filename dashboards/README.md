@@ -11,6 +11,12 @@ Grafana schema-V2 dashboard JSONs for the `cae_v16_*` metrics this action emits
 
 ## Import rules (hard-won — do not deviate)
 
+- **Files are full v2 resources, paste-ready.** Each JSON is wrapped in the
+  Kubernetes-style envelope (`apiVersion: dashboard.grafana.app/v2`,
+  `kind: Dashboard`, `metadata.name` = live uid, `spec` = the dashboard) that
+  Grafana's paste-JSON import requires — a bare spec fails with "Missing
+  property metadata/spec", and `v2beta1`/`v2alpha1` apiVersions are rejected.
+  Query edits go under `spec`; the uid lives only in `metadata.name`.
 - **Always import with overwrite, never delete+import.** Grafana assigns uids on
   import and ignores the JSON's; deleting a board mints a new uid and breaks
   every cross-link. The live uids above are hardcoded into the cross-board links
