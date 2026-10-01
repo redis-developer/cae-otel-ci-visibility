@@ -10,6 +10,14 @@ Grafana schema-V2 dashboard JSONs for the `cae_v16_*` metrics this action emits
 | `v16-trends.json`       | Test Trends & Timelines (v16) | `bocj686`              | Fleet view: offenders, per-track trends, catalog stats   |
 | `v16-test-details.json` | Test Details (v16)            | `cae-test-details-v16` | Debug view: timeline + health context for selected tests |
 
+All four boards share a `branch` variable whose preselected choice `default`
+matches `master|main|default`. Since action 4.5.0 the action writes the literal
+`default` as the branch label on a repository's default branch; the
+`master|main` part keeps older action versions and events without a known
+default branch visible. Every query matches the label with `=~`, so the regex
+works unchanged. Keep the variable single-select: a multi-value or "All"
+variable makes Grafana regex-escape the `|` and the choice matches nothing.
+
 Test-name clicks on the other three boards deep-link into Test Details with
 `var-test_id` preset; its uid is therefore hardcoded in all three JSONs. The uid
 was chosen in `metadata.name` before first import — if Grafana ever mints a

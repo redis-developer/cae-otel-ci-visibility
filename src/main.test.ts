@@ -2,6 +2,7 @@ import { jest } from '@jest/globals'
 import { mkdtempSync, writeFileSync, rmSync, readFileSync, mkdirSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import type { TMetricDataPoint } from './metrics-generator.js'
 
 const mockCore = {
   getInput: jest.fn(),
@@ -74,6 +75,18 @@ jest.unstable_mockModule('./metrics-submitter.js', () => ({
 }))
 
 const { run } = await import('./main.js')
+
+// Distinct vcs.repository.ref.name values on the data points handed to the
+// submitter in the first (and only) submitMetrics call.
+const submittedRefNames = (): string[] => {
+  const dataPoints = (mockMetricsSubmitter.submitMetrics.mock.calls[0]?.[0] ??
+    []) as ReadonlyArray<TMetricDataPoint>
+  return [
+    ...new Set(
+      dataPoints.map((p) => p.attributes['vcs.repository.ref.name'] ?? '')
+    )
+  ]
+}
 
 describe('main.ts', () => {
   let testDir: string
@@ -687,5 +700,92 @@ ${uniqueTestcases}
     await run()
 
     expect(mockMetricsSubmitter.submitMetrics).toHaveBeenCalledTimes(1)
+    // No default branch to compare against: the real name is kept, and
+    // dashboards fall back to matching master|main by name.
+    expect(submittedRefNames()).toEqual(['whatever'])
+    expect(mockCore.info).toHaveBeenCalledWith("   Branch label: 'whatever'")
+  })
+
+  it("should label runs on the default branch as 'default'", async () => {
+    writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+    // beforeEach: ref main, default_branch main
+
+    mockCore.getInput.mockImplementation(
+      //@ts-expect-error - Mock implementation
+      (name: string) => {
+        switch (name) {
+          case 'junit-xml-folder':
+            return testDir
+          case 'otlp-endpoint':
+            return 'http://localhost:4318/v1/metrics'
+          default:
+            return ''
+        }
+      }
+    )
+
+    await run()
+
+    expect(mockMetricsSubmitter.submitMetrics).toHaveBeenCalledTimes(1)
+    expect(submittedRefNames()).toEqual(['default'])
+    // The real branch name stays visible in the log
+    expect(mockCore.info).toHaveBeenCalledWith('   Branch: main')
+    expect(mockCore.info).toHaveBeenCalledWith(
+      "   Branch label: 'default' (default branch 'main' is labelled 'default')"
+    )
+  })
+
+  it("should label the default branch 'default' even when it is in the allowlist", async () => {
+    writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+    mockGithub.context.ref = 'refs/heads/master'
+    mockGithub.context.payload = { repository: { default_branch: 'master' } }
+
+    mockCore.getInput.mockImplementation(
+      //@ts-expect-error - Mock implementation
+      (name: string) => {
+        switch (name) {
+          case 'junit-xml-folder':
+            return testDir
+          case 'otlp-endpoint':
+            return 'http://localhost:4318/v1/metrics'
+          case 'branch-allowlist':
+            return 'master,releases/v2'
+          default:
+            return ''
+        }
+      }
+    )
+
+    await run()
+
+    expect(mockMetricsSubmitter.submitMetrics).toHaveBeenCalledTimes(1)
+    expect(submittedRefNames()).toEqual(['default'])
+  })
+
+  it('should keep the real branch name for allowlisted non-default branches', async () => {
+    writeFileSync(join(testDir, 'test-results.xml'), junitXmlContent)
+    mockGithub.context.ref = 'refs/heads/releases/v2'
+
+    mockCore.getInput.mockImplementation(
+      //@ts-expect-error - Mock implementation
+      (name: string) => {
+        switch (name) {
+          case 'junit-xml-folder':
+            return testDir
+          case 'otlp-endpoint':
+            return 'http://localhost:4318/v1/metrics'
+          case 'branch-allowlist':
+            return 'main,releases/v2'
+          default:
+            return ''
+        }
+      }
+    )
+
+    await run()
+
+    expect(mockMetricsSubmitter.submitMetrics).toHaveBeenCalledTimes(1)
+    expect(submittedRefNames()).toEqual(['releases/v2'])
+    expect(mockCore.info).toHaveBeenCalledWith("   Branch label: 'releases/v2'")
   })
 })

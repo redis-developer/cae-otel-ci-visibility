@@ -69,6 +69,15 @@ repository default branch. Set `branch-allowlist` to a comma-separated list
 (e.g. `master,releases/v2`) to emit for those branches instead, or `*` to emit
 everywhere (not recommended).
 
+Runs on the default branch are labelled `vcs.repository.ref.name="default"`
+rather than with the branch name (since 4.5.0). Default branches are called
+`master`, `main`, `unstable`, ... across repositories, and one literal lets a
+dashboard select every repository's default branch with a single matcher.
+Allowlisted extra branches keep their real name (`releases/v2`). When the
+triggering event does not carry the repository's default branch, the real name
+is kept — so dashboards should match `master|main|default` while older action
+versions are still in use.
+
 ## Metrics
 
 Generates one low-cardinality per-test metric optimized for performance
@@ -82,12 +91,12 @@ and `v16` schema version are hardcoded.
 
 **Labels:**
 
-| Label                     | Description                                     | Cardinality      |
-| ------------------------- | ----------------------------------------------- | ---------------- |
-| `test.id`                 | Unique test identifier (see below)              | High but bounded |
-| `vcs.repository.name`     | Repository (e.g., `owner/repo`)                 | Low              |
-| `vcs.repository.ref.name` | Branch name (e.g., `main`, `master`)            | Low              |
-| `server.version`          | System under test version (only when input set) | Low, bounded     |
+| Label                     | Description                                           | Cardinality      |
+| ------------------------- | ----------------------------------------------------- | ---------------- |
+| `test.id`                 | Unique test identifier (see below)                    | High but bounded |
+| `vcs.repository.name`     | Repository (e.g., `owner/repo`)                       | Low              |
+| `vcs.repository.ref.name` | `default` on the default branch, else the branch name | Low              |
+| `server.version`          | System under test version (only when input set)       | Low, bounded     |
 
 **Total: up to 4 labels.** Deliberately **no per-run labels** (run IDs, commit
 SHAs): a label value that never repeats mints one new series per test on every
@@ -113,7 +122,7 @@ Number of tests in the run, by result status — one data point per status.
 | ------------------------- | -------------------------------------------- | ----------- |
 | `test.result.status`      | `passed` \| `failed` \| `error` \| `skipped` | 4           |
 | `vcs.repository.name`     | Repository                                   | Low         |
-| `vcs.repository.ref.name` | Branch                                       | Low         |
+| `vcs.repository.ref.name` | `default` on the default branch, else branch | Low         |
 
 #### `cae_v16_test_run_duration_seconds`
 
@@ -133,7 +142,7 @@ gate.
 | ------------------------- | -------------------------------------------------------------------------------------------------------- | ------------- |
 | `suite.id`                | Suite name, whitespace-normalized; over 256 chars truncated to `head...tail___hash8`; `unnamed` if empty | One per suite |
 | `vcs.repository.name`     | Repository                                                                                               | Low           |
-| `vcs.repository.ref.name` | Branch                                                                                                   | Low           |
+| `vcs.repository.ref.name` | `default` on the default branch, else branch                                                             | Low           |
 
 ### Test ID Format
 
@@ -190,11 +199,13 @@ repos should stay on `warn` or rename the test.
 Example Prometheus/Grafana queries for regression detection:
 
 ```promql
+# Default-branch runs are labelled "default" (action >= 4.5.0); the master|main
+# alternatives keep older action versions visible during the rollout.
 # Baseline: average duration on default branch over 7 days
 avg by (test_id, vcs_repository_name) (
   avg_over_time(
     cae_v16_test_duration_seconds{
-      vcs_repository_ref_name="main"
+      vcs_repository_ref_name=~"master|main|default"
     }[7d]
   )
 )
@@ -203,17 +214,17 @@ avg by (test_id, vcs_repository_name) (
 max by (test_id, vcs_repository_name) (
   last_over_time(
     cae_v16_test_duration_seconds{
-      vcs_repository_ref_name="main"
+      vcs_repository_ref_name=~"master|main|default"
     }[1h]
   )
 )
 
 # Regression detection: current > 5x baseline
 max by (test_id, vcs_repository_name) (
-  last_over_time(cae_v16_test_duration_seconds{vcs_repository_ref_name="main"}[1h])
+  last_over_time(cae_v16_test_duration_seconds{vcs_repository_ref_name=~"master|main|default"}[1h])
 )
 > 5 * avg by (test_id, vcs_repository_name) (
-  avg_over_time(cae_v16_test_duration_seconds{vcs_repository_ref_name="main"}[7d])
+  avg_over_time(cae_v16_test_duration_seconds{vcs_repository_ref_name=~"master|main|default"}[7d])
 )
 
 # Cardinality churn: test ids first seen in the last day. Spikes after merges
@@ -231,8 +242,8 @@ count by (vcs_repository_name) (
 The action automatically extracts from GitHub context:
 
 - Repository name (`owner/repo`)
-- Branch name
-- Default branch (for branch gating)
+- Branch name (labelled `default` when it is the repository default branch)
+- Default branch (for branch gating and the `default` label)
 
 The commit SHA is logged in the action output for correlating a regression's
 timestamp with the commit that caused it, but is deliberately **not** a metric

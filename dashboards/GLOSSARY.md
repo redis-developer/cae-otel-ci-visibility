@@ -30,9 +30,13 @@ Use exactly these terms. Do not use synonyms.
 | unstable test name      | A test name that changes from run to run                                 |
 | metric series           | One metric + one combination of label values; the billed unit            |
 | active series           | A metric series with data in the last 20 minutes; billed                 |
+| default branch          | The branch a repository reports from when no allowlist is set            |
 
 "Metric series" and "active series" are allowed only in the billing and
 name-stability panels, where they are the measured unit.
+
+The Branch filter offers `default`, `master` and `main`. The `default` choice
+selects the default branch of every repository at once, whatever its name.
 
 ## Say / do not say
 

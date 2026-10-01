@@ -647,7 +647,7 @@
           "description": "The 200 tests with the largest change against their own baseline, one row per combination of test name and server version. Before a baseline exists, the table shows the 200 slowest tests instead. A test outside the top 200 can still be regressed; the \"Regressions right now\" table below shows every regressed test. Click a test name to open it in Test Details.\n\nColumns:\n- trend: red up = slower, green down = faster\n- typical (recent): the median duration over the recent window\n- typical (baseline): the median duration over the baseline window\n- last run: the duration of the most recent run\n- change (s) / change (%): typical (recent) minus typical (baseline)\n- runs counted: the number of runs in the baseline window; be careful with small values\n- verdict: REGRESSION when the test matches the regression rule (see \"Regressed tests now\")",
           "id": 3,
           "links": [],
-          "title": "Top 200 tests that changed the most ($branch)",
+          "title": "Top 200 tests that changed the most (${branch:text})",
           "vizConfig": {
             "group": "table",
             "kind": "VizConfig",
@@ -1754,8 +1754,8 @@
         "spec": {
           "allowCustomValue": true,
           "current": {
-            "text": "master",
-            "value": "master"
+            "text": "default",
+            "value": "master|main|default"
           },
           "hide": "dontHide",
           "includeAll": false,
@@ -1763,7 +1763,7 @@
           "multi": false,
           "name": "branch",
           "options": [],
-          "query": "master,main",
+          "query": "default : master|main|default,master,main",
           "skipUrlSync": false,
           "valuesFormat": "csv"
         }

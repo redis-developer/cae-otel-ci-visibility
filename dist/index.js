@@ -57372,9 +57372,13 @@ async function run() {
         const defaultBranch = typeof payloadRepository?.default_branch === 'string'
             ? payloadRepository.default_branch
             : undefined;
+        // Label value, not branch name: the default branch is labelled 'default'
+        // so dashboards select every repository's default branch with one
+        // matcher, whatever it is called (master, main, unstable, ...).
+        const refName = resolveRefName(branch, defaultBranch);
         const config = {
             repository,
-            branch,
+            branch: refName,
             serverVersion
         };
         coreExports.info(`🔧 Configuring OpenTelemetry CI Visibility`);
@@ -57397,6 +57401,9 @@ async function run() {
             return;
         }
         coreExports.info(`   Branch gate: ${branchDecision.reason}`);
+        coreExports.info(refName === branch
+            ? `   Branch label: '${refName}'`
+            : `   Branch label: '${refName}' (default branch '${branch}' is labelled '${refName}')`);
         coreExports.info(`📊 Processing JUnit XML files from: ${junitXmlFolder}`);
         const ingestResult = ingestDir(junitXmlFolder);
         if (!ingestResult.success) {
@@ -57658,6 +57665,14 @@ const shouldEmitForBranch = (branch, allowlistInput, defaultBranch) => {
         reason: `branch '${branch}' is not the default branch '${defaultBranch}' (set branch-allowlist to override)`
     };
 };
+// Default branches are called master, main, unstable, ... across repositories,
+// so a dashboard cannot select "the default branch of every repository" by
+// name. The default branch is therefore labelled with the literal 'default';
+// only allowlisted extra branches keep their real name. When the event payload
+// does not carry the default branch the real name is kept — dashboards match
+// master|main as a fallback for that case.
+const DEFAULT_BRANCH_LABEL = 'default';
+const resolveRefName = (branch, defaultBranch) => defaultBranch && branch === defaultBranch ? DEFAULT_BRANCH_LABEL : branch;
 const parseOtlpHeaders = (headersInput) => {
     if (!headersInput.trim()) {
         return {};

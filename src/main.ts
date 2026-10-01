@@ -121,9 +121,14 @@ export async function run(): Promise<void> {
         ? payloadRepository.default_branch
         : undefined
 
+    // Label value, not branch name: the default branch is labelled 'default'
+    // so dashboards select every repository's default branch with one
+    // matcher, whatever it is called (master, main, unstable, ...).
+    const refName = resolveRefName(branch, defaultBranch)
+
     const config: TMetricsConfig = {
       repository,
-      branch,
+      branch: refName,
       serverVersion
     }
 
@@ -155,6 +160,11 @@ export async function run(): Promise<void> {
     }
 
     core.info(`   Branch gate: ${branchDecision.reason}`)
+    core.info(
+      refName === branch
+        ? `   Branch label: '${refName}'`
+        : `   Branch label: '${refName}' (default branch '${branch}' is labelled '${refName}')`
+    )
 
     core.info(`📊 Processing JUnit XML files from: ${junitXmlFolder}`)
 
@@ -538,6 +548,20 @@ const shouldEmitForBranch = (
     reason: `branch '${branch}' is not the default branch '${defaultBranch}' (set branch-allowlist to override)`
   }
 }
+
+// Default branches are called master, main, unstable, ... across repositories,
+// so a dashboard cannot select "the default branch of every repository" by
+// name. The default branch is therefore labelled with the literal 'default';
+// only allowlisted extra branches keep their real name. When the event payload
+// does not carry the default branch the real name is kept — dashboards match
+// master|main as a fallback for that case.
+const DEFAULT_BRANCH_LABEL = 'default'
+
+const resolveRefName = (
+  branch: string,
+  defaultBranch: string | undefined
+): string =>
+  defaultBranch && branch === defaultBranch ? DEFAULT_BRANCH_LABEL : branch
 
 const parseOtlpHeaders = (headersInput: string): Record<string, string> => {
   if (!headersInput.trim()) {
